@@ -1,2 +1,3 @@
-Add per-project styles
-Improved handling of different settings when importing/forking
+Fix mobile/desktop client button display
+Fix forking (and importing) within projects
+Add style toggle for forking summarization

@@ -128,17 +128,18 @@ If this is a writing or creative discussion, include sections for characters, pl
 		includeToolCallsContainer.appendChild(keepToolCallsFromSummarizedToggle.container);
 		leftPanel.appendChild(includeToolCallsContainer);
 
-		// Use above model for summarization toggle
-		const useSelectedModelToggle = createClaudeToggle('Use above model for summarization instead of Haiku (EXPENSIVE!)', false);
-		useSelectedModelToggle.input.id = 'useSelectedModelForSummary';
-		useSelectedModelToggle.container.style.transition = 'opacity 0.2s';
-		leftPanel.appendChild(useSelectedModelToggle.container);
-
 		// Use current style for summarization toggle
 		const useCurrentStyleToggle = createClaudeToggle('Summarize using current style', false);
 		useCurrentStyleToggle.input.id = 'useCurrentStyleForSummary';
 		useCurrentStyleToggle.container.style.transition = 'opacity 0.2s';
 		leftPanel.appendChild(useCurrentStyleToggle.container);
+
+		// Use above model for summarization toggle
+		const useSelectedModelToggle = createClaudeToggle('Use above model for summarization instead of Haiku (High usage!)', false);
+		useSelectedModelToggle.input.id = 'useSelectedModelForSummary';
+		useSelectedModelToggle.container.style.transition = 'opacity 0.2s';
+		leftPanel.appendChild(useSelectedModelToggle.container);
+
 
 		content.appendChild(leftPanel);
 
