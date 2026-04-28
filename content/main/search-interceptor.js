@@ -69,10 +69,10 @@
 				const response = await responsePromise;
 
 				if (response.intercept) {
-					//console.log('[Search Interceptor] Intercepting with custom results:', response.results.length);
+					console.log('[Search Interceptor] Intercepting with custom results:', JSON.stringify(response.results));
 
 					// Return fake Response with our results
-					return new Response(JSON.stringify(response.results), {
+					return new Response(JSON.stringify({data: response.results, has_more: false}), {
 						status: 200,
 						statusText: 'OK',
 						headers: {

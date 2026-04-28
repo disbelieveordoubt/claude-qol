@@ -1387,11 +1387,11 @@
 
 			// Fetch conversations (project-scoped or all)
 			const apiUrl = projectId
-				? `/api/organizations/${orgId}/projects/${projectId}/conversations`
-				: `/api/organizations/${orgId}/chat_conversations`;
+				? `/api/organizations/${orgId}/projects/${projectId}/conversations_v2?limit=10000&offset=0`
+				: `/api/organizations/${orgId}/chat_conversations_v2?limit=10000&offset=0`;
 			const response = await fetch(apiUrl);
 			if (!response.ok) throw new Error('Failed to fetch conversations');
-			let conversations = await response.json();
+			let conversations = (await response.json()).data;
 			// Keep only the last 10 conversations (THIS IS FOR TESTING - REMOVE IN RELEASE)
 			//conversations = conversations.slice(0, 10);
 

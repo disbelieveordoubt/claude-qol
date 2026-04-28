@@ -19,12 +19,12 @@
 	async function getConversationsToUpdate() {
 		const orgId = getOrgId();
 
-		const response = await fetch(`/api/organizations/${orgId}/chat_conversations`);
+		const response = await fetch(`/api/organizations/${orgId}/chat_conversations_v2?limit=10000&offset=0`);
 		if (!response.ok) {
 			throw new Error('Failed to fetch conversations');
 		}
 
-		const allConversations = await response.json();
+		const allConversations = (await response.json()).data;
 		console.log(`Found ${allConversations.length} total conversations`);
 
 		const storedMetadata = await searchDB.getAllMetadata();
@@ -40,7 +40,7 @@
 				// Check if messages exist
 				const messages = await searchDB.getMessages(conv.uuid);
 
-				if (!messages) {
+				if (messages === null) {
 					// Metadata exists but no messages - needs update
 					toUpdate.push(conv);
 				} else if (new Date(conv.updated_at) > new Date(stored.updated_at)) {
@@ -107,7 +107,7 @@
 
 	async function triggerSync() {
 		syncCancelled = false; // Reset cancellation state
-		const loadingModal = createLoadingModal('Initializing sync...');
+		const loadingModal = createLoadingModal('Initializing text search...');
 		if (isFirstSyncOnRecents) {
 			loadingModal.show(); // Show only on first sync when on /recents
 			isFirstSyncOnRecents = false;
