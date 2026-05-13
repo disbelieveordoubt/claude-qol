@@ -509,16 +509,13 @@
 			return;
 		}
 
-		// Find the header by locating the /new link whose flex parent also contains an h1
-		let headerContainer = null;
-		for (const link of document.querySelectorAll('a[href="/new"]')) {
-			const flex = link.closest('.flex.items-center');
-			if (flex && flex.querySelector('h1')) {
-				headerContainer = flex;
-				break;
-			}
-		}
-		if (!headerContainer) return;
+		// Find the header buttons container
+		const header = document.querySelector('[data-testid="page-header"]');
+		if (!header) return;
+		const newLink = header.querySelector('a[href="/new"]');
+		if (!newLink) return;
+		const buttonsContainer = newLink.closest('.flex.items-center');
+		if (!buttonsContainer) return;
 
 		// Create toggle container - place it in the header
 		const toggleContainer = document.createElement('div');
@@ -559,9 +556,8 @@
 		toggleContainer.appendChild(toggle.container);
 		toggleContainer.appendChild(textLabel);
 
-		// Insert after the h1 in the header
-		const heading = headerContainer.querySelector('h1');
-		heading.after(toggleContainer);
+		// Insert before the existing buttons
+		buttonsContainer.insertBefore(toggleContainer, buttonsContainer.firstChild);
 	}
 
 	// ======== INITIALIZATION ========
