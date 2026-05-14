@@ -400,23 +400,23 @@
 		const { userMessages: messages } = getUIMessages();
 
 		messages.forEach((message) => {
-			// Find the parent row
-			const messageRow = message?.parentElement?.parentElement;
-			if (!messageRow) return;
+			const bubble = message.closest('[data-user-message-bubble]');
+			if (!bubble) return;
+			const outerGroup = bubble.parentElement?.parentElement;
+			if (!outerGroup) return;
 
 			// Skip if buttons already added
-			if (messageRow.querySelector('[user-nav-buttons]')) return;
+			if (outerGroup.querySelector('[user-nav-buttons]')) return;
 
-			// Make the parent row relative for absolute positioning
-			messageRow.style.position = 'relative';
+			outerGroup.style.position = 'relative';
 
-			// Create button container
+			// Create button container — placed in the outer group so it's outside the bubble's clipping
 			const navContainer = document.createElement('div');
 			navContainer.setAttribute('user-nav-buttons', 'true');
 			navContainer.className = 'flex flex-col items-center bg-bg-100/80 border-border-300 border-0.5';
 			navContainer.style.position = 'absolute';
-			navContainer.style.left = '-50px';
-			navContainer.style.top = '50%';
+			navContainer.style.left = '0';
+			navContainer.style.top = (bubble.offsetTop + bubble.offsetHeight / 2) + 'px';
 			navContainer.style.transform = 'translateY(-50%)';
 			navContainer.style.borderRadius = '6px';
 			navContainer.style.opacity = '0';
@@ -428,7 +428,9 @@
 				const { userMessages: allMessages } = getUIMessages();
 				const currentIndex = Array.from(allMessages).indexOf(message);
 				if (currentIndex > 0) {
-					allMessages[currentIndex - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+					const target = allMessages[currentIndex - 1];
+					target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+					setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 10);
 				}
 			});
 
@@ -437,26 +439,27 @@
 				const { userMessages: allMessages } = getUIMessages();
 				const currentIndex = Array.from(allMessages).indexOf(message);
 				if (currentIndex < allMessages.length - 1) {
-					allMessages[currentIndex + 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+					const target = allMessages[currentIndex + 1];
+					target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+					setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 10);
 				}
 			});
 
 			navContainer.appendChild(upBtn);
 			navContainer.appendChild(downBtn);
-			messageRow.appendChild(navContainer);
-
-			// Show on hover
+			outerGroup.appendChild(navContainer);
+			// Show on hover of the outer message group
 			let hideTimeout;
 
-			messageRow.addEventListener('mouseenter', () => {
+			outerGroup.addEventListener('mouseenter', () => {
 				clearTimeout(hideTimeout);
 				navContainer.style.opacity = '1';
 			});
 
-			messageRow.addEventListener('mouseleave', () => {
+			outerGroup.addEventListener('mouseleave', () => {
 				hideTimeout = setTimeout(() => {
 					navContainer.style.opacity = '0';
-				}, 100); // Small delay
+				}, 100);
 			});
 		});
 	}
