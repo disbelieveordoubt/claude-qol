@@ -365,8 +365,8 @@
 		});
 
 		if (!downloadResult.success) {
-			gdprLoadingModal = null;
 			gdprLoadingModal.destroy();
+			gdprLoadingModal = null;
 			throw new Error(`Download failed: ${downloadResult.error}`);
 		}
 

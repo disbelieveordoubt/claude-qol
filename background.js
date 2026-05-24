@@ -16,7 +16,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 		(async () => {
 			try {
-				// Download
 				const response = await fetch(message.url);
 				if (!response.ok) {
 					throw new Error(`Download failed: ${response.status}`);
@@ -25,23 +24,66 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 				const arrayBuffer = await response.arrayBuffer();
 				console.log('[Background] Downloaded', arrayBuffer.byteLength, 'bytes');
 
-				// Unzip
-				const zip = await JSZip.loadAsync(arrayBuffer);
-				console.log('[Background] Zip loaded, files:', Object.keys(zip.files));
+				let conversations;
 
-				const conversationsFile = zip.file('conversations.json');
-				if (!conversationsFile) {
-					throw new Error('conversations.json not found in export');
+				try {
+					// Try as multi-file JSON manifest first
+					const text = new TextDecoder().decode(arrayBuffer);
+					const manifest = JSON.parse(text);
+
+					if (!manifest.data_files) throw new Error('Not a manifest');
+
+					console.log('[Background] Got multi-file manifest with', manifest.data_files.length, 'files');
+					const sortedFiles = manifest.data_files.sort((a, b) => a.batch_index - b.batch_index);
+					conversations = [];
+
+					for (const file of sortedFiles) {
+						console.log('[Background] Downloading batch', file.batch_index);
+
+						// Fetch the export page to get the actual storage URL
+						const pageResponse = await fetch(file.export_url);
+						if (!pageResponse.ok) {
+							throw new Error(`Batch ${file.batch_index} page failed: ${pageResponse.status}`);
+						}
+						const html = await pageResponse.text();
+						const urlMatch = html.match(/https:\/\/storage\.googleapis\.com\/user-data-export-production\/[^"]+/);
+						if (!urlMatch) {
+							throw new Error(`Batch ${file.batch_index}: no storage URL found in export page`);
+						}
+						const storageUrl = urlMatch[0].replace(/\\u0026/g, '&');
+
+						// Download the actual ZIP from storage
+						const zipResponse = await fetch(storageUrl);
+						if (!zipResponse.ok) {
+							throw new Error(`Batch ${file.batch_index} download failed: ${zipResponse.status}`);
+						}
+						const zipBuffer = await zipResponse.arrayBuffer();
+						const zip = await JSZip.loadAsync(zipBuffer);
+						const conversationsFile = zip.file('conversations.json');
+						if (!conversationsFile) {
+							throw new Error(`conversations.json not found in batch ${file.batch_index}`);
+						}
+						const jsonText = await conversationsFile.async('text');
+						const batch = JSON.parse(jsonText);
+						conversations.push(...batch);
+						console.log('[Background] Batch', file.batch_index, ':', batch.length, 'conversations');
+					}
+				} catch (jsonError) {
+					console.warn('[Background] Not a multi-file manifest, trying as single ZIP:', jsonError);
+					// Not a JSON manifest — treat as single ZIP
+					const zip = await JSZip.loadAsync(arrayBuffer);
+					console.log('[Background] Zip loaded, files:', Object.keys(zip.files));
+
+					const conversationsFile = zip.file('conversations.json');
+					if (!conversationsFile) {
+						throw new Error('conversations.json not found in export');
+					}
+
+					const jsonText = await conversationsFile.async('text');
+					conversations = JSON.parse(jsonText);
 				}
 
-				console.log('[Background] Extracting conversations.json...');
-				const jsonText = await conversationsFile.async('text');
-				console.log('[Background] Extracted JSON, length:', jsonText.length);
-
-				// Parse
-				console.log('[Background] Parsing JSON...');
-				const conversations = JSON.parse(jsonText);
-				console.log('[Background] Parsed', conversations.length, 'conversations');
+				console.log('[Background] Total conversations:', conversations.length);
 
 				// Send initial response with total count
 				sendResponse({
