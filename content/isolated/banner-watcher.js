@@ -4,7 +4,7 @@
 	const FLAG_SEVERITY = {
 		'consumer_first_warning': { level: 1, color: '#eab308', label: 'First Warning' },
 		'consumer_second_warning': { level: 2, color: '#f97316', label: 'Second Warning' },
-		//'consumer_restricted_mode': { level: 3, color: '#ef4444', label: 'Restricted Mode' },
+		'consumer_restricted_mode': { level: 3, color: '#ef4444', label: 'Restricted Mode' },
 	};
 	const DEFAULT_COLOR = '#eab308';
 
@@ -29,19 +29,6 @@
 		return color;
 	}
 
-	function getHighestSeverityLabel() {
-		let maxLevel = 0;
-		let label = 'Usage flags';
-		for (const flag of _activeFlags) {
-			const severity = FLAG_SEVERITY[flag.type];
-			if (severity && severity.level > maxLevel) {
-				maxLevel = severity.level;
-				label = severity.label;
-			}
-		}
-		return label;
-	}
-
 	function updateButton() {
 		if (!_buttonRef) return;
 		if (_activeFlags.length === 0) {
@@ -49,15 +36,14 @@
 		} else {
 			_buttonRef.style.display = '';
 			_buttonRef.style.color = getHighestSeverityColor();
-			ButtonBar.updateTooltip('banner-watcher-button', getHighestSeverityLabel());
 		}
 	}
 
 	// Debug: comment/uncomment entries to test different flag states
 	const DEBUG_FLAGS = [
-		{ type: 'consumer_first_warning', expires_at: '2099-01-01T00:00:00Z' },
-		{ type: 'consumer_second_warning', expires_at: '2099-01-01T00:00:00Z' },
-		{ type: 'consumer_restricted_mode', expires_at: '2099-01-01T00:00:00Z' },
+		//{ type: 'consumer_first_warning', expires_at: '2099-01-01T00:00:00Z' },
+		//{ type: 'consumer_second_warning', expires_at: '2099-01-01T00:00:00Z' },
+		//{ type: 'consumer_restricted_mode', expires_at: '2099-01-01T00:00:00Z' },
 	];
 
 	async function fetchActiveFlags() {
