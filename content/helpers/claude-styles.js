@@ -1080,6 +1080,7 @@ const pageLayouts = {
 // Callers register buttons once; ButtonBar handles polling, injection, ordering, and mobile.
 const ButtonBar = {
 	BUTTON_PRIORITY: [
+		'banner-watcher-button',
 		'search-button',
 		'navigation-button',
 		'style-selector-button',
