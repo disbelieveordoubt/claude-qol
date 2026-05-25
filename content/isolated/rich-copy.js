@@ -7,110 +7,57 @@
 
 	const RICH_COPY_CLASS = 'qol-rich-copy-btn';
 
-	const RICH_COPY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14h6"/><path d="M9 18h6"/><path d="M9 10h6"/></svg>`;
+	const RICH_COPY_SVG = `<div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="flex-shrink: 0;"><path d="M12.5 3A1.5 1.5 0 0 1 14 4.5V6h1.5A1.5 1.5 0 0 1 17 7.5v8a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 6 15.5V14H4.5A1.5 1.5 0 0 1 3 12.5v-8A1.5 1.5 0 0 1 4.5 3zm1.5 9.5a1.5 1.5 0 0 1-1.5 1.5H7v1.5a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5H14zM4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-8a.5.5 0 0 0-.5-.5z"/><rect x="5.5" y="6.5" width="5" height="1" rx="0.5"/><rect x="5.5" y="9" width="5" height="1" rx="0.5"/><rect x="5.5" y="11.5" width="3" height="1" rx="0.5"/></svg></div>`;
 
-	const CHECK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-
-	function isMessageActionBar(el) {
-		if (!el) return false;
-		if (el.dataset?.testid === 'action-bar-copy') return true;
-		const group = el.closest('[role="group"][aria-label="Message actions"]');
-		return !!group;
-	}
-
-	function isCopyButton(btn) {
-		const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
-		if (ariaLabel.includes('copy')) return true;
-
-		const title = (btn.getAttribute('title') || '').toLowerCase();
-		if (title.includes('copy')) return true;
-
-		const testId = btn.dataset?.testid || '';
-		if (testId.includes('copy')) return true;
-
-		const textContent = btn.textContent?.trim().toLowerCase() || '';
-		if (textContent === 'copy') return true;
-
-		const svg = btn.querySelector('svg');
-		if (svg) {
-			const markup = svg.outerHTML;
-			if (markup.includes('M16 4') || markup.includes('M8 4') || markup.includes('M8 2')) return true;
-			const rects = svg.querySelectorAll('rect');
-			if (rects.length >= 2) return true;
-		}
-
-		return false;
-	}
+	const CHECK_SVG = `<div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="flex-shrink: 0;"><path d="M15.3 5.3a1 1 0 0 1 1.4 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 0 1 1.4-1.4L8 12.58l7.3-7.3z"/></svg></div>`;
 
 	function findContentBlockCopyButtons() {
 		const results = [];
-		const allButtons = document.querySelectorAll('button');
+		const copyButtons = document.querySelectorAll('button[aria-label="Copy message"]');
 
-		for (const btn of allButtons) {
-			if (isMessageActionBar(btn)) continue;
-			if (btn.classList.contains(RICH_COPY_CLASS)) continue;
-			if (!isCopyButton(btn)) continue;
-			if (btn.parentElement?.querySelector('.' + RICH_COPY_CLASS)) continue;
+		for (const btn of copyButtons) {
+			if (btn.dataset.testid === 'action-bar-copy') continue;
+			if (btn.closest('[role="group"][aria-label="Message actions"]')) continue;
+
+			const actionBar = btn.closest('.justify-end.gap-2');
+			if (!actionBar) continue;
+			if (actionBar.querySelector('.' + RICH_COPY_CLASS)) continue;
+
 			results.push(btn);
 		}
 
 		return results;
 	}
 
-	function findContentBlock(copyButton) {
-		let el = copyButton.parentElement;
-		for (let i = 0; i < 15 && el; i++) {
-			if (el.matches('[role="group"][aria-label="Message actions"]')) return null;
+	function findContentArea(actionBar) {
+		const container = actionBar.parentElement;
+		if (!container) return null;
 
-			const cls = el.className || '';
-			if (typeof cls !== 'string') { el = el.parentElement; continue; }
-
-			const hasBorder = cls.includes('border');
-			const hasRounding = cls.includes('rounded');
-
-			if (hasBorder && hasRounding && el.offsetHeight > 60) {
-				const textLen = el.textContent?.trim().length || 0;
-				if (textLen > 30) return el;
-			}
-
-			el = el.parentElement;
+		for (const child of container.children) {
+			if (child === actionBar) continue;
+			if (child.textContent?.trim().length > 20) return child;
 		}
 		return null;
 	}
 
-	function extractContentHtml(contentBlock, copyButton) {
-		const clone = contentBlock.cloneNode(true);
-
-		clone.querySelectorAll('button, .' + RICH_COPY_CLASS).forEach(el => el.remove());
-		clone.querySelectorAll('svg').forEach(el => el.remove());
-		clone.querySelectorAll('a').forEach(a => {
-			const text = a.textContent?.trim().toLowerCase() || '';
-			if (text.includes('send via') || text.includes('gmail')) a.remove();
-		});
-
-		const html = clone.innerHTML
-			.replace(/<div[^>]*class="[^"]*(?:action|toolbar|btn-group)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
-			.trim();
-
-		return html;
+	function cleanHtmlForClipboard(contentEl) {
+		const clone = contentEl.cloneNode(true);
+		clone.querySelectorAll('button, svg, [role="button"]').forEach(el => el.remove());
+		return clone.innerHTML;
 	}
 
-	function getPlainText(contentBlock) {
-		const clone = contentBlock.cloneNode(true);
-		clone.querySelectorAll('button, svg, .' + RICH_COPY_CLASS).forEach(el => el.remove());
-		clone.querySelectorAll('a').forEach(a => {
-			const text = a.textContent?.trim().toLowerCase() || '';
-			if (text.includes('send via') || text.includes('gmail')) a.remove();
-		});
-		return clone.textContent?.trim() || '';
-	}
+	async function copyAsRichText(actionBar, button) {
+		const contentEl = findContentArea(actionBar);
+		if (!contentEl) {
+			showClaudeAlert('Error', 'Could not find content to copy.');
+			return;
+		}
 
-	async function copyAsRichText(contentBlock, button) {
-		const html = extractContentHtml(contentBlock, button);
-		const plainText = getPlainText(contentBlock);
+		const html = cleanHtmlForClipboard(contentEl);
+		const plainText = contentEl.textContent?.trim() || '';
 
 		if (!plainText) {
-			showClaudeAlert('Error', 'Could not find content to copy.');
+			showClaudeAlert('Error', 'No content to copy.');
 			return;
 		}
 
@@ -131,34 +78,45 @@
 		}
 	}
 
-	function createRichCopyButton(contentBlock) {
+	function createRichCopyButton(actionBar) {
+		const copyBtnClasses = `inline-flex items-center justify-center relative isolate shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border-transparent transition font-base duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] h-8 w-8 rounded-md`;
+
+		const pill = document.createElement('div');
+		pill.className = 'flex items-center h-8 bg-bg-000 rounded-lg border-0.5 border-border-300 shadow-sm overflow-hidden ' + RICH_COPY_CLASS;
+
+		const wrapper = document.createElement('div');
+		wrapper.className = 'w-fit';
+
 		const btn = document.createElement('button');
-		btn.className = RICH_COPY_CLASS;
-		btn.innerHTML = RICH_COPY_SVG;
+		btn.className = copyBtnClasses;
+		btn.type = 'button';
 		btn.setAttribute('aria-label', 'Copy as rich text');
-		btn.style.cssText = 'cursor:pointer; background:none; border:none; color:inherit; padding:4px; display:inline-flex; align-items:center; opacity:0.7; transition:opacity 0.15s;';
-		btn.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
-		btn.addEventListener('mouseleave', () => { btn.style.opacity = '0.7'; });
+		btn.innerHTML = RICH_COPY_SVG;
+
 		btn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			copyAsRichText(contentBlock, btn);
+			copyAsRichText(actionBar, btn);
 		});
 
 		createClaudeTooltip(btn, 'Copy as rich text');
 
-		return btn;
+		wrapper.appendChild(btn);
+		pill.appendChild(wrapper);
+		return pill;
 	}
 
 	function injectButtons() {
 		const copyButtons = findContentBlockCopyButtons();
 		for (const copyBtn of copyButtons) {
-			const contentBlock = findContentBlock(copyBtn);
-			if (!contentBlock) continue;
-			if (contentBlock.querySelector('.' + RICH_COPY_CLASS)) continue;
+			const actionBar = copyBtn.closest('.justify-end.gap-2');
+			if (!actionBar) continue;
 
-			const richBtn = createRichCopyButton(contentBlock);
-			copyBtn.parentElement.insertBefore(richBtn, copyBtn.nextSibling);
+			const copyPill = copyBtn.closest('.bg-bg-000.rounded-lg');
+			if (!copyPill) continue;
+
+			const richBtn = createRichCopyButton(actionBar);
+			copyPill.parentElement.insertBefore(richBtn, copyPill.nextSibling);
 		}
 	}
 
