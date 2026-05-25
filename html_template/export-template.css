@@ -100,6 +100,17 @@ h1 {
 	margin: 0 0 16px
 }
 
+/* ── Export header ── */
+.export-meta {
+	margin-bottom: 24px
+}
+
+.export-model {
+	font-size: 0.85rem;
+	color: hsl(var(--text-400));
+	margin-top: 2px
+}
+
 /* ── Messages ── */
 .msg {
 	margin-bottom: 24px
@@ -114,6 +125,14 @@ h1 {
 	justify-content: space-between;
 	align-items: center;
 	gap: 8px
+}
+
+.msg-timestamp {
+	display: block;
+	font-weight: 400;
+	font-size: 0.75rem;
+	color: hsl(var(--text-400));
+	margin-bottom: 4px
 }
 
 /* User: right-aligned bubble */

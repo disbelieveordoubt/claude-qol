@@ -77,6 +77,9 @@
 
 	function formatMdExport(conversationData, messages, conversationId, includeThinking = true) {
 		let output = `# ${conversationData.name}\n\n`;
+		if (conversationData.model) {
+			output += `**Model:** ${conversationData.model}\n\n`;
+		}
 
 		for (const message of messages) {
 			const role = message.sender === ROLES.USER.apiName ? 'User' : 'Assistant';
@@ -363,7 +366,11 @@
 		}));
 
 		// Render ALL messages as hidden divs
-		let messagesHtml = '';
+		let messagesHtml = `<div class="export-meta"><h1>${esc(title)}</h1>`;
+		if (conversationData.model) {
+			messagesHtml += `<div class="export-model">Model: ${esc(conversationData.model)}</div>`;
+		}
+		messagesHtml += `</div>\n`;
 		for (const message of messages) {
 			const isUser = message.sender === ROLES.USER.apiName;
 			const role = isUser ? 'User' : 'Assistant';
@@ -420,7 +427,8 @@
 			}
 
 			contentHtml += fileResults.join('');
-			messagesHtml += `<div class="msg ${roleClass}" id="msg-${message.uuid}" style="display:none"><div class="msg-header">${role}</div><div class="msg-body">${contentHtml}</div></div>\n`;
+			const tsAttr = message.created_at ? ` data-timestamp="${new Date(message.created_at).getTime()}"` : '';
+			messagesHtml += `<div class="msg ${roleClass}" id="msg-${message.uuid}"${tsAttr} style="display:none"><div class="msg-header">${role}</div><div class="msg-body">${contentHtml}</div></div>\n`;
 		}
 
 		// Assemble from template

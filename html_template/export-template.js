@@ -54,6 +54,15 @@
 	applyTheme();
 	btn.onclick = function () { isDark = !isDark; applyTheme(); };
 
+	document.querySelectorAll('.msg[data-timestamp]').forEach(function (msg) {
+		var ts = parseInt(msg.getAttribute('data-timestamp'), 10);
+		if (!ts) return;
+		var span = document.createElement('span');
+		span.className = 'msg-timestamp';
+		span.textContent = new Date(ts).toLocaleString();
+		msg.querySelector('.msg-header').after(span);
+	});
+
 	document.querySelectorAll('.text-content pre code').forEach(function (code) {
 		var pre = code.parentElement;
 		var btn = document.createElement('button');
