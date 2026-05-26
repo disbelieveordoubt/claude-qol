@@ -30,16 +30,18 @@
 	}
 
 	function findContentArea(actionBar) {
-		const RENDERED_TAGS = 'p, h1, h2, h3, h4, h5, h6, pre, ol, ul, table, blockquote';
-		let container = actionBar.parentElement;
-		for (let i = 0; i < 5 && container; i++) {
-			for (const child of container.children) {
-				if (child === actionBar || child.contains(actionBar)) continue;
+		let current = actionBar;
+		for (let i = 0; i < 4 && current.parentElement; i++) {
+			const parent = current.parentElement;
+			let best = null;
+			for (const child of parent.children) {
+				if (child === current || child.contains(current)) break;
 				if (child.tagName === 'TEXTAREA' || child.tagName === 'INPUT') continue;
 				if (child.querySelector('textarea, input[type="text"]')) continue;
-				if (child.querySelector(RENDERED_TAGS) && child.textContent?.trim().length > 20) return child;
+				if (child.textContent?.trim().length > 20) best = child;
 			}
-			container = container.parentElement;
+			if (best) return best;
+			current = parent;
 		}
 		return null;
 	}
