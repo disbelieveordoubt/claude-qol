@@ -20,7 +20,7 @@
 		plainText = plainText.replace(/====UUID:[a-f0-9-]+====/gi, '');
 		plainText = plainText.replace(/\n{3,}/g, '\n\n').trim();
 
-		const html = marked.parse(plainText);
+		const html = marked.parse(plainText, { breaks: true });
 
 		return navigator.clipboard.write.call(navigator.clipboard, [
 			new ClipboardItem({
