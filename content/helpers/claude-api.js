@@ -1891,6 +1891,25 @@ async function getCurrentUserStyle(orgId) {
 	}
 }
 
+async function getEffectiveStyle(orgId, conversationId) {
+	const overrideStyle = await new Promise((resolve) => {
+		const requestId = Math.random().toString(36).substr(2, 9);
+		const listener = (event) => {
+			if (event.data.type === 'perchat-style-response' && event.data.requestId === requestId) {
+				window.removeEventListener('message', listener);
+				resolve(event.data.style);
+			}
+		};
+		window.addEventListener('message', listener);
+		window.postMessage({ type: 'perchat-style-request', conversationId, requestId }, '*');
+		setTimeout(() => { window.removeEventListener('message', listener); resolve(null); }, 500);
+	});
+
+	if (overrideStyle?.type === 'none') return null;
+	if (overrideStyle) return overrideStyle;
+	return getCurrentUserStyle(orgId);
+}
+
 async function listStyles(orgId) {
 	const response = await fetch(`/api/organizations/${orgId}/list_styles`);
 	if (!response.ok) {
