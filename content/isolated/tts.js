@@ -305,95 +305,6 @@
 		return button;
 	}
 
-	function findArtifactButtonsRow() {
-		const markdownArtifact = document.querySelector('#markdown-artifact');
-		if (!markdownArtifact) return null;
-
-		// Navigate up to find the header bar
-		const parentContainer = markdownArtifact.closest('.relative.flex')?.parentElement;
-		if (!parentContainer) return null;
-
-		const headerBar = parentContainer.querySelector('.pr-2.pl-3.flex.items-center.justify-between');
-		if (!headerBar) return null;
-
-		// Find the container that holds all the button groups (not just the copy button group)
-		const buttonsContainer = headerBar.querySelector('.flex.gap-2.items-center.text-sm');
-		return buttonsContainer;
-	}
-
-	function createArtifactSpeakButton() {
-		// Create a container div like the Copy button has
-		const container = document.createElement('div');
-		container.className = 'flex h-8 whitespace-nowrap';
-
-		const button = document.createElement('button');
-		button.className = 'font-base-bold !text-xs rounded-lg bg-bg-000 h-full flex items-center justify-center px-2 border border-border-300 hover:bg-bg-200 tts-artifact-speak-button';
-		button.innerHTML = `<div class="relative"><div class="">Speak</div></div>`;
-
-		button.onclick = async (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-
-			// Find the Copy button specifically
-			const buttonsRow = findArtifactButtonsRow();
-			const allButtons = buttonsRow?.querySelectorAll('.flex.h-8.whitespace-nowrap button');
-			const copyButton = Array.from(allButtons || []).find(btn =>
-				!btn.classList.contains('tts-artifact-speak-button')
-			);
-
-			if (!copyButton) {
-				showClaudeAlert('Error', 'Could not find copy button');
-				return;
-			}
-
-			// Rest of the code remains the same...
-			isCapturingText = true;
-			capturedText = null;
-
-			copyButton.click();
-
-			await new Promise(resolve => setTimeout(resolve, 100));
-
-			isCapturingText = false;
-
-			if (!capturedText) {
-				showClaudeAlert('Error', 'Failed to capture artifact text');
-				return;
-			}
-
-			const settings = await loadSettings();
-			const conversationId = getConversationId();
-
-			const quotesOnly = (await settingsRegistry.getPerChat(TP.QUOTES_ONLY, conversationId)) === true;
-
-			if (ttsProvider && ttsProvider.requiresApiKey && settings.apiKey) {
-				const isValid = await ttsProvider.testApiKey(settings.apiKey);
-				if (!isValid) {
-					showClaudeAlert('API Key Error', 'Invalid API key.');
-					return;
-				}
-			} else if (ttsProvider.requiresApiKey && !settings.apiKey) {
-				showClaudeAlert('API Key Required', 'Provider requires an API key. Please enter one.');
-				return;
-			}
-
-			const finalText = cleanupText(capturedText, quotesOnly);
-			if (!finalText) {
-				showClaudeAlert('No Text Available', 'No text to speak' + (quotesOnly ? ' (no quoted text found)' : ''));
-				return;
-			}
-
-			try {
-				await playText(finalText, settings, conversationId);
-			} catch (error) {
-				showClaudeAlert('Playback Error', 'Failed to play audio: ' + error.message);
-			}
-		};
-
-		container.appendChild(button);
-		return container;
-	}
-
 	async function captureMessageText(button) {
 		const controls = button.closest('.justify-between');
 		const copyButton = controls?.querySelector('[data-testid="action-bar-copy"]');
@@ -439,37 +350,8 @@
 		return text;
 	}
 
-	async function addArtifactSpeakButtons() {
-		const settings = await loadSettings();
-		if (!settings.enabled) return;
-
-		// Handle artifact buttons
-		const buttonsRow = findArtifactButtonsRow();
-
-		if (buttonsRow) {
-			// Artifact exists - add button if not present
-			if (!buttonsRow.querySelector('.tts-artifact-speak-button')) {
-				const speakButtonContainer = createArtifactSpeakButton();
-				buttonsRow.insertBefore(speakButtonContainer, buttonsRow.firstChild);
-			}
-		} else {
-			// No artifact found - remove any existing artifact speak buttons
-			const existingArtifactButtons = document.querySelectorAll('.tts-artifact-speak-button');
-			existingArtifactButtons.forEach(btn => {
-				// Remove the container div that wraps the button
-				const container = btn.closest('.flex.h-8.whitespace-nowrap');
-				if (container) {
-					container.remove();
-				} else {
-					btn.remove();
-				}
-			});
-		}
-	}
-
 	function removeAllSpeakButtons() {
-		// Remove all speak buttons (both types)
-		const buttons = document.querySelectorAll('.tts-speak-button, .tts-artifact-speak-button');
+		const buttons = document.querySelectorAll('.tts-speak-button');
 		buttons.forEach(btn => btn.remove());
 	}
 	//#endregion
@@ -1212,7 +1094,6 @@
 			pages: ['chat', 'coworkChat'],
 			shouldInject: async () => (await loadSettings()).enabled,
 		});
-		setInterval(addArtifactSpeakButtons, 1000);
 	}
 
 	// Wait for DOM to be ready before initializing
