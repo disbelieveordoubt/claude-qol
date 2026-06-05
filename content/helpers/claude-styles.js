@@ -28,8 +28,8 @@ const CLAUDE_CLASSES = {
 	TEXT_MUTED: 'text-sm text-text-400',
 
 	// Tooltip
-	TOOLTIP_WRAPPER: 'fixed left-0 top-0 min-w-max z-[100] pointer-events-none',
-	TOOLTIP_CONTENT: 'px-2 py-1 text-xs font-normal font-ui leading-tight rounded-md shadow-md text-white bg-black/80 backdrop-blur break-words max-w-[13rem]',
+	TOOLTIP_WRAPPER: 'fixed left-0 top-0 min-w-max z-tooltip pointer-events-none',
+	TOOLTIP_CONTENT: 'px-2 rounded-[6px] bg-fill-primary text-on-primary text-[13px]/[18px] shadow-sm inline-flex items-center whitespace-nowrap gap-2 h-6',
 
 	// Layout helpers
 	FLEX_CENTER: 'flex items-center justify-center',
@@ -1069,6 +1069,31 @@ function createClaudeSlider(label, defaultValue = 100, options = {}) {
 }
 
 
+let _tooltipPortal = null;
+function getTooltipPortal() {
+	if (_tooltipPortal && _tooltipPortal.isConnected) return _tooltipPortal;
+
+	const existing = document.querySelector('.cds-root[data-cds-portal]');
+	if (existing) {
+		_tooltipPortal = existing;
+		return _tooltipPortal;
+	}
+
+	const reference = document.querySelector('.cds-root');
+	const portal = document.createElement('div');
+	portal.className = 'cds-root pointer-events-auto';
+	portal.setAttribute('data-cds-portal', '');
+	if (reference) {
+		for (const attr of ['data-density', 'data-mode', 'data-platform', 'data-font']) {
+			const val = reference.getAttribute(attr);
+			if (val) portal.setAttribute(attr, val);
+		}
+	}
+	document.body.appendChild(portal);
+	_tooltipPortal = portal;
+	return _tooltipPortal;
+}
+
 function createClaudeTooltip(element, tooltipText, deleteOnClick) {
 	const tooltipId = `tooltip-${Math.random().toString(36).substring(2, 11)}`;
 
@@ -1079,22 +1104,16 @@ function createClaudeTooltip(element, tooltipText, deleteOnClick) {
 	const tooltipWrapper = document.createElement('div');
 	tooltipWrapper.className = CLAUDE_CLASSES.TOOLTIP_WRAPPER;
 	tooltipWrapper.style.display = 'none';
-	tooltipWrapper.setAttribute('data-radix-popper-content-wrapper', '');
+	tooltipWrapper.setAttribute('data-cds', 'Tooltip');
 
 	// Add tooltip content with the ID
 	const tooltipContent = document.createElement('div');
 	tooltipContent.id = tooltipId;
 	tooltipContent.className = CLAUDE_CLASSES.TOOLTIP_CONTENT + ' tooltip-content';
-	tooltipContent.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-	tooltipContent.setAttribute('data-side', 'bottom');
+	tooltipContent.setAttribute('data-open', '');
+	tooltipContent.setAttribute('data-side', 'top');
 	tooltipContent.setAttribute('data-align', 'center');
-	tooltipContent.setAttribute('data-state', 'delayed-open');
-	tooltipContent.innerHTML = `
-        ${tooltipText}
-        <span role="tooltip" style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; overflow-wrap: normal;">
-            ${tooltipText}
-        </span>
-    `;
+	tooltipContent.innerHTML = `<span>${tooltipText}</span>`;
 	tooltipWrapper.appendChild(tooltipContent);
 
 	// Add hover events
@@ -1113,7 +1132,10 @@ function createClaudeTooltip(element, tooltipText, deleteOnClick) {
 		const rect = element.getBoundingClientRect();
 		const tooltipRect = tooltipWrapper.getBoundingClientRect();
 		const centerX = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
-		tooltipWrapper.style.transform = `translate(${centerX}px, ${rect.bottom + 5}px)`;
+		const topY = rect.top - tooltipRect.height - 5;
+		const bottomY = rect.bottom + 5;
+		const y = topY < 0 ? bottomY : topY;
+		tooltipWrapper.style.transform = `translate(${centerX}px, ${y}px)`;
 		setTimeout(checkTooltipParent, 500);
 	});
 
@@ -1139,7 +1161,7 @@ function createClaudeTooltip(element, tooltipText, deleteOnClick) {
 		});
 	}
 
-	document.body.appendChild(tooltipWrapper);
+	getTooltipPortal().appendChild(tooltipWrapper);
 
 	// Clean up when element is removed
 	const originalRemove = element.remove.bind(element);
@@ -1152,12 +1174,7 @@ function createClaudeTooltip(element, tooltipText, deleteOnClick) {
 	const tooltipAPI = {
 		wrapper: tooltipWrapper,
 		updateText: (newText) => {
-			tooltipContent.innerHTML = `
-                ${newText}
-                <span role="tooltip" style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; overflow-wrap: normal;">
-                    ${newText}
-                </span>
-            `;
+			tooltipContent.innerHTML = `<span>${newText}</span>`;
 		}
 	};
 
