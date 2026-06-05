@@ -35,7 +35,8 @@
 				"content/isolated/tts.js",
 				"content/isolated/exporter.js",
 				"content/isolated/notifications.js",
-				"content/isolated/banner-watcher.js"
+				"content/isolated/banner-watcher.js",
+				"content/isolated/rich-copy.js"
 			],
 			"run_at": "document_idle"
 		},
@@ -58,7 +59,9 @@
 				"content/main/styles-fetch-interceptor.js",
 				"content/main/tts-interceptor.js",
 				"content/main/image-extractor.js",
-				"content/main/extra-models.js"
+				"content/main/extra-models.js",
+				"lib/marked.min.js",
+				"content/main/rich-copy-interceptor.js"
 			],
 			"world": "MAIN",
 			"run_at": "document_start"

@@ -1,1 +1,4 @@
-Fix extra models to restore Opus 4.5
+Add option to include attachments in markdown exports
+Fix auto-speak not working for new messages
+Add searchable dropdowns
+Add "copy as rich text" button to content blocks (@cancan101) and artifacts.
