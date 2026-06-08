@@ -1,4 +1,2 @@
-Add option to include attachments in markdown exports
-Fix auto-speak not working for new messages
-Add searchable dropdowns
-Add "copy as rich text" button to content blocks (@cancan101) and markdown files.
+Remove style override since styles were cut
+Patch encryption to use connectors rather than styles
