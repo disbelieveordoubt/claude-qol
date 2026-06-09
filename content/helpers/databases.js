@@ -147,6 +147,7 @@
 				'raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']
 			);
 			_bulkEncryptAll(); // fire-and-forget
+			_deleteOldConnector(); // fire-and-forget
 			return key;
 		}
 
@@ -204,6 +205,22 @@
 			console.log('[QOL-Encryption] Data wipe complete');
 		} catch (e) {
 			console.warn('[QOL-Encryption] Error during data wipe:', e.message);
+		}
+	}
+
+	async function _deleteOldConnector() {
+		const OLD_CONNECTOR_NAME = 'QOL_ENCRYPTIONKEY_DO_NOT_DELETE';
+		try {
+			const orgId = getOrgId();
+			const connectors = await (await fetch(`/api/organizations/${orgId}/mcp/remote_servers`)).json();
+			if (!Array.isArray(connectors)) return;
+			const old = connectors.find(c => c.name === OLD_CONNECTOR_NAME);
+			if (!old) return;
+			console.log('[QOL-Encryption] Deleting old encryption connector:', old.uuid);
+			await fetch(`/api/organizations/${orgId}/mcp/remote_servers/${old.uuid}`, { method: 'DELETE' });
+			console.log('[QOL-Encryption] Old connector deleted');
+		} catch (e) {
+			console.warn('[QOL-Encryption] Failed to delete old connector:', e.message);
 		}
 	}
 
