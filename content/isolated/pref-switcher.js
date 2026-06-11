@@ -108,6 +108,17 @@
 			list.style.maxHeight = '300px';
 			contentContainer.appendChild(list);
 
+			async function applyPreset(content) {
+				const applyingModal = createLoadingModal('Applying preferences...');
+				applyingModal.show();
+				try {
+					await setPreferences(content);
+					await renderList();
+				} finally {
+					applyingModal.destroy();
+				}
+			}
+
 			async function renderList() {
 				const presets = await getStoredPresets();
 				const nowActiveId = await getCurrentPresetId();
@@ -118,10 +129,9 @@
 					id: 'none', name: 'None', isActive: nowActiveId === 'none',
 					onApply: async () => {
 						if (nowActiveId === 'unsaved') {
-							if (!await showClaudeConfirm('Current preferences are unsaved and will be lost. Switch anyway?')) return;
+							if (!await showClaudeConfirm('Unsaved Preferences', 'Current preferences are unsaved and will be lost. Switch anyway?')) return;
 						}
-						await setPreferences('');
-						await renderList();
+						await applyPreset('');
 					}
 				}));
 
@@ -140,17 +150,22 @@
 						id, name: preset.name, isActive: nowActiveId === id,
 						onApply: async () => {
 							if (nowActiveId === 'unsaved') {
-								if (!await showClaudeConfirm('Current preferences are unsaved and will be lost. Switch anyway?')) return;
+								if (!await showClaudeConfirm('Unsaved Preferences', 'Current preferences are unsaved and will be lost. Switch anyway?')) return;
 							}
-							await setPreferences(preset.content);
-							await renderList();
+							await applyPreset(preset.content);
 						},
 						onEdit: () => showEditPresetModal(id, null, renderList),
 						onDelete: async () => {
-							if (!await showClaudeConfirm(`Delete preset "${preset.name}"?`)) return;
-							await deletePreset(id);
-							if (nowActiveId === id) await setPreferences('');
-							await renderList();
+							if (!await showClaudeConfirm('Delete Preset', `Delete preset "${preset.name}"?`)) return;
+							const deletingModal = createLoadingModal('Deleting preset...');
+							deletingModal.show();
+							try {
+								await deletePreset(id);
+								if (nowActiveId === id) await setPreferences('');
+								await renderList();
+							} finally {
+								deletingModal.destroy();
+							}
 						}
 					}));
 				}
@@ -273,13 +288,19 @@
 				return false;
 			}
 			const content = textarea.value;
-			await savePreset(presetId, name, content);
-			const ok = await setPreferences(content);
-			if (!ok) {
-				showClaudeAlert('Error', 'Failed to update preferences. Please try again.');
-				return false;
+			const savingModal = createLoadingModal('Applying preferences...');
+			savingModal.show();
+			try {
+				await savePreset(presetId, name, content);
+				const ok = await setPreferences(content);
+				if (!ok) {
+					showClaudeAlert('Error', 'Failed to update preferences. Please try again.');
+					return false;
+				}
+				if (onSaved) await onSaved();
+			} finally {
+				savingModal.destroy();
 			}
-			if (onSaved) await onSaved();
 		});
 
 		modal.show();
