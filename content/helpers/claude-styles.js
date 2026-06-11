@@ -264,6 +264,7 @@ function showClaudeConfirm(title, message) {
 	return new Promise((resolve) => {
 		const messageEl = document.createElement('p');
 		messageEl.className = 'text-text-100';
+		messageEl.style.whiteSpace = 'pre-line';
 		messageEl.textContent = message;
 
 		const modal = new ClaudeModal(title, messageEl);
@@ -308,58 +309,43 @@ function showClaudeThreeOption(title, message, options) {
 	});
 }
 
-async function promptForSettingsMismatch(sourceSettings) {
+// Warn on any mismatch between the source conversation's feature settings and
+// the current account settings. Informational only — never switches anything.
+// Returns the current feature settings (fed to prepareNew for addFile routing).
+async function warnAboutSettingsMismatch(sourceSettings) {
 	const account = await getAccountSettings();
 	const current = account.settings || account;
 
-	const desiredArtifacts = sourceSettings?.preview_feature_uses_artifacts === true;
-	const desiredCE = sourceSettings?.enabled_monkeys_in_a_barrel === true;
+	const sourceArtifacts = sourceSettings?.preview_feature_uses_artifacts === true;
+	const sourceCE = sourceSettings?.enabled_monkeys_in_a_barrel === true;
 	const currentArtifacts = current.preview_feature_uses_artifacts === true;
 	const currentCE = current.enabled_monkeys_in_a_barrel === true;
 
-	const artifactsMismatch = desiredArtifacts !== currentArtifacts;
-	const ceMismatch = desiredCE !== currentCE;
-
-	if (!artifactsMismatch && !ceMismatch) {
-		return {
-			preview_feature_uses_artifacts: currentArtifacts,
-			enabled_monkeys_in_a_barrel: currentCE,
-		};
-	}
+	const currentSettings = {
+		preview_feature_uses_artifacts: currentArtifacts,
+		enabled_monkeys_in_a_barrel: currentCE,
+	};
 
 	const mismatches = [];
-	if (artifactsMismatch) {
-		mismatches.push(`Artifacts: Originally ${desiredArtifacts ? 'ON' : 'OFF'} | Currently ${currentArtifacts ? 'ON' : 'OFF'}`);
+	if (sourceArtifacts !== currentArtifacts) {
+		mismatches.push(`Artifacts: Originally ${sourceArtifacts ? 'ON' : 'OFF'} | Currently ${currentArtifacts ? 'ON' : 'OFF'}`);
 	}
-	if (ceMismatch) {
-		mismatches.push(`Code Execution: Originally ${desiredCE ? 'ON' : 'OFF'} | Currently ${currentCE ? 'ON' : 'OFF'}`);
+	if (sourceCE !== currentCE) {
+		mismatches.push(`Code Execution: Originally ${sourceCE ? 'ON' : 'OFF'} | Currently ${currentCE ? 'ON' : 'OFF'}`);
 	}
 
-	const result = await showClaudeThreeOption(
+	if (mismatches.length === 0) return currentSettings;
+
+	const proceed = await showClaudeConfirm(
 		'Settings Mismatch',
-		`Source conversation has different settings:\n${mismatches.join('\n')}\n\nWhat would you like to do?`,
-		{
-			left: { text: 'Cancel', variant: 'secondary' },
-			middle: { text: 'Continue anyway', variant: 'secondary' },
-			right: { text: 'Switch to match', variant: 'primary' }
-		}
+		`The source conversation has different settings:\n${mismatches.join('\n')}\n\n` +
+		`The new conversation will use your current settings. ` +
+		`Note: features that are OFF when a conversation is created can never be enabled in it later. ` +
+		`Cancel and adjust your settings first if needed.`
 	);
+	if (!proceed) throw new Error('USER_CANCELLED');
 
-	if (result === 'left') {
-		throw new Error('USER_CANCELLED');
-	}
-
-	if (result === 'middle') {
-		return {
-			preview_feature_uses_artifacts: currentArtifacts,
-			enabled_monkeys_in_a_barrel: currentCE,
-		};
-	}
-
-	return {
-		preview_feature_uses_artifacts: desiredArtifacts,
-		enabled_monkeys_in_a_barrel: desiredCE,
-	};
+	return currentSettings;
 }
 
 // Full-featured prompt with all options

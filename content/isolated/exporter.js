@@ -880,7 +880,7 @@
 	}
 
 	async function finalizeImport(name, messages, model, zipFiles = null, loadingModal = null, settings = null) {
-		const accountFeatureSettings = await promptForSettingsMismatch(settings);
+		const accountFeatureSettings = await warnAboutSettingsMismatch(settings);
 
 		const conversation = new ClaudeConversation(getOrgId());
 		conversation.prepareNew(name, model, getProjectId(), accountFeatureSettings);
@@ -1309,8 +1309,9 @@
 			await finalizeImport(name, messages, model, zipFiles, loadingModal, settings);
 			// Navigation happens in finalizeImport, loading modal cleaned up automatically
 		} catch (error) {
-			console.error('Import failed:', error);
 			loadingModal.destroy();
+			if (error.message === 'USER_CANCELLED') return;
+			console.error('Import failed:', error);
 			showClaudeAlert('Import Error', error.message || 'Failed to import conversation');
 		}
 	}

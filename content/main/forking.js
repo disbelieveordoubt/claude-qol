@@ -11,7 +11,6 @@ If this is a writing or creative discussion, include sections for characters, pl
 		includeAttachments: true,
 		rawTextPercentage: 100,
 		summaryPrompt: defaultSummaryPrompt,
-		originalSettings: null,
 		useSelectedModelForSummary: false
 	};
 	const LAST_CHUNK_SIZE = 15000;     // Reserved for end (guaranteed recency bias)
@@ -293,14 +292,6 @@ If this is a writing or creative discussion, include sections for characters, pl
 			return false;
 		});
 
-		// Fetch account settings
-		try {
-			const accountData = await getAccountSettings();
-			pendingFork.originalSettings = accountData.settings;
-		} catch (error) {
-			console.error('Failed to fetch account settings:', error);
-		}
-
 		return modal;
 	}
 
@@ -471,15 +462,11 @@ If this is a writing or creative discussion, include sections for characters, pl
 			loadingModal.clearButtons();
 			loadingModal.addConfirm('OK');
 		} finally {
-			if (pendingFork.originalSettings) {
-				await updateAccountSettings(pendingFork.originalSettings);
-			}
 			pendingFork = {
 				model: null,
 				includeAttachments: true,
 				rawTextPercentage: 100,
 				summaryPrompt: defaultSummaryPrompt,
-				originalSettings: null,
 				loadingModal: null,
 				useSelectedModelForSummary: false
 			};
@@ -571,7 +558,7 @@ If this is a writing or creative discussion, include sections for characters, pl
 		const newName = `Fork of ${chatName}`;
 		const model = pendingFork.model;
 
-		const settings = await promptForSettingsMismatch(pendingFork.sourceSettings);
+		const settings = await warnAboutSettingsMismatch(pendingFork.sourceSettings);
 
 		const conversation = new ClaudeConversation(orgId);
 		conversation.prepareNew(newName, model, projectUuid, settings);
