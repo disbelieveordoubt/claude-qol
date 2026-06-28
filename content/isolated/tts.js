@@ -380,6 +380,10 @@
 			}));
 			const currentProviderInfo = window.TTSProviders.TTS_PROVIDERS[settings.provider];
 
+			// When OpenAI is used with a custom Base URL, the hardcoded model dropdown
+			// can't name the custom endpoint's models, so use a free-text input instead.
+			const useCustomModel = (provider, baseUrl) => provider === 'openai' && !!(baseUrl || '').trim();
+
 			// Load voices and models if API key exists
 			let voices = [];
 			let models = [];
@@ -482,6 +486,7 @@
 			// Model select
 			const modelSection = document.createElement('div');
 			modelSection.className = 'mb-4';
+			modelSection.id = 'modelSelectSection';
 			const modelLabel = document.createElement('label');
 			modelLabel.className = CLAUDE_CLASSES.LABEL;
 			modelLabel.textContent = 'Model';
@@ -494,7 +499,30 @@
 			modelSelect.id = 'modelSelect';
 			modelSelect.disabled = currentProviderInfo.requiresApiKey && !settings.apiKey;
 			modelSection.appendChild(modelSelect);
+			modelSection.style.display = useCustomModel(settings.provider, settings.openaiBaseUrl) ? 'none' : 'block';
 			content.appendChild(modelSection);
+
+			// Custom model input (OpenAI with a custom Base URL)
+			const modelCustomSection = document.createElement('div');
+			modelCustomSection.className = 'mb-4';
+			modelCustomSection.id = 'modelCustomSection';
+			modelCustomSection.style.display = useCustomModel(settings.provider, settings.openaiBaseUrl) ? 'block' : 'none';
+			const modelCustomLabel = document.createElement('label');
+			modelCustomLabel.className = CLAUDE_CLASSES.LABEL;
+			modelCustomLabel.textContent = 'Model';
+			modelCustomSection.appendChild(modelCustomLabel);
+			const modelCustomInput = createClaudeInput({
+				type: 'text',
+				value: settings.model || '',
+				placeholder: 'gpt-4o-mini-tts'
+			});
+			modelCustomInput.id = 'modelCustomInput';
+			modelCustomSection.appendChild(modelCustomInput);
+			const modelCustomHint = document.createElement('p');
+			modelCustomHint.className = 'text-text-500 text-xs mt-1';
+			modelCustomHint.textContent = 'Model name for the custom endpoint';
+			modelCustomSection.appendChild(modelCustomHint);
+			content.appendChild(modelCustomSection);
 
 			// Auto-speak toggle
 			const autoSpeakSection = document.createElement('div');
@@ -580,7 +608,9 @@
 					provider: providerSelect.value,
 					apiKey: apiKeyInput.value.trim(),
 					voice: voiceSelect.value,
-					model: modelSelect.value,
+					model: useCustomModel(providerSelect.value, baseUrlInput.value)
+						? modelCustomInput.value.trim()
+						: modelSelect.value,
 					autoSpeak: autoSpeakToggle.input.checked,
 					openaiBaseUrl: baseUrlInput.value.trim().replace(/\/+$/, '')  // Strip trailing slashes
 				};
@@ -680,6 +710,11 @@
 				// Show/hide base URL section (only for OpenAI)
 				baseUrlSection.style.display = newProviderKey === 'openai' ? 'block' : 'none';
 
+				// Swap between the model dropdown and the custom-model input
+				const custom = useCustomModel(newProviderKey, baseUrlInput.value);
+				modelSection.style.display = custom ? 'none' : 'block';
+				modelCustomSection.style.display = custom ? 'block' : 'none';
+
 				const tempProvider = initializeProvider(newProviderKey, null);
 
 				// Check if we need to load data
@@ -773,6 +808,13 @@
 						e.target.value = settings.apiKey || '';
 					}
 				}
+			});
+
+			// Swap between the model dropdown and the custom-model input as the Base URL changes
+			baseUrlInput.addEventListener('input', () => {
+				const custom = useCustomModel(providerSelect.value, baseUrlInput.value);
+				modelSection.style.display = custom ? 'none' : 'block';
+				modelCustomSection.style.display = custom ? 'block' : 'none';
 			});
 
 			modal.show();
