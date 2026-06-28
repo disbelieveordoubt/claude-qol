@@ -1618,12 +1618,14 @@ function findMessageControls(messageElement) {
 	const messageContainer = messageElement.closest('.group')?.parentElement?.parentElement;
 	if (!messageContainer) return null;
 
-	// Use the aria-label to find the message actions container
-	const actionsGroup = messageContainer.querySelector('[role="group"][aria-label="Message actions"]');
-	if (!actionsGroup) return null;
+	// New UI: the role="toolbar" element is itself the justify-between flex row
+	// that directly contains the action buttons.
+	const toolbar = messageContainer.querySelector('[role="toolbar"][aria-label="Message actions"]');
+	if (toolbar) return toolbar;
 
-	// Return the .justify-between element inside
-	return actionsGroup.querySelector('.justify-between');
+	// Legacy UI: role="group" wrapper with a .justify-between child.
+	const actionsGroup = messageContainer.querySelector('[role="group"][aria-label="Message actions"]');
+	return actionsGroup?.querySelector('.justify-between') ?? null;
 }
 
 // Retrieve all message elements from the UI
