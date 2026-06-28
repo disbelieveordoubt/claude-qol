@@ -68,7 +68,10 @@ Adds a dropdown to the sidebar to let you switch between different preferences. 
 ## Copy as Rich Text
 Adds a "Copy as rich text" button next to the existing copy button on content blocks. Converts markdown to formatted HTML so it pastes with proper bold, italic, lists, headings, etc. into email clients (Outlook, Gmail), Google Docs, and other rich text editors.
 
-## Style selector
-<img width="440" height="220" alt="image" src="https://github.com/user-attachments/assets/e90642a6-1780-4418-8f9c-74ad6f2140ed" />
+## The hidden "do not delete" skill
 
-Allows you to set a style for a given chat, which will take precedence over the global style.
+You may notice a disabled skill on your account named `qol-encryptionkey-do-not-delete` (the extension hides it from the in-app skills list, but it exists on your account). This is created and managed automatically — please don't delete it.
+
+Its only purpose is to store an encryption key at the account level. Features like global search keep a local cache of your message text in the browser (IndexedDB), and that cache is encrypted at rest using this key. Storing the key as an account-level skill means it travels with your account rather than being tied to a single browser, which lays the groundwork for future cross-device sync of that cached data.
+
+If you do delete it, nothing breaks — the extension simply generates a new key and rebuilds the local cache from scratch (the old encrypted cache becomes unrecoverable and is wiped).

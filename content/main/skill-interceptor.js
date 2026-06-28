@@ -4,6 +4,9 @@
 	'use strict';
 
 	const HIDDEN_SKILL_NAME = 'qol-encryptionkey-do-not-delete';
+	// Legacy encryption-key styles that have since been converted into skills.
+	// They carry this marker in their description rather than a known name.
+	const HIDDEN_DESCRIPTION_MARKER = 'QOL_ENCRYPT_NODELETE';
 
 	const originalFetch = window.fetch;
 	window.fetch = async (...args) => {
@@ -27,9 +30,12 @@
 				const data = await response.clone().json();
 				if (data.skills && Array.isArray(data.skills)) {
 					const before = data.skills.length;
-					data.skills = data.skills.filter(s => s.name !== HIDDEN_SKILL_NAME);
+					data.skills = data.skills.filter(s =>
+						s.name !== HIDDEN_SKILL_NAME &&
+						!(typeof s.description === 'string' && s.description.includes(HIDDEN_DESCRIPTION_MARKER))
+					);
 					if (data.skills.length !== before) {
-						console.log('[QOL-SkillInterceptor] Filtered encryption key skill from skills list');
+						console.log('[QOL-SkillInterceptor] Filtered encryption key skill(s) from skills list');
 					}
 					return new Response(JSON.stringify(data), {
 						status: response.status,
