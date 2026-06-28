@@ -349,6 +349,8 @@
 	async function formatHtmlExport(conversationData, messages, conversationId) {
 		// Configure marked to use highlight.js for code blocks
 		marked.use({
+			breaks: true,
+			gfm: true,
 			renderer: {
 				code({ text, lang }) {
 					let highlighted;
