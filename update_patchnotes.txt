@@ -1,2 +1,5 @@
-Added a loading modal when switching preferences
-Fixed some issues around mismatched settings when importing/forking
+Fix forking/etc buttons not injecting
+Fix global search
+Add model setting for custom TTS endpoints
+Fix newlines being stripped in HTML exports
+Update tooltips to match new styling
