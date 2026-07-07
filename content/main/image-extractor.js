@@ -3,6 +3,56 @@
 // Two-mode approach: discovery (expand all, find images, mark, collapse all) then steady-state (keep marked expanded).
 'use strict';
 
+// ==== Preview dimension resolution ====
+// msg.files no longer carries preview_asset dimensions, so we load the built preview
+// URL and read its natural size. Persist the results in localStorage keyed by
+// file_uuid so reloading a long conversation doesn't re-measure every image.
+const _IMG_DIMS_CACHE_KEY = 'claude_qol_image_dims_cache';
+
+const _imageDimsCache = (() => {
+	try {
+		const raw = localStorage.getItem(_IMG_DIMS_CACHE_KEY);
+		return raw ? new Map(Object.entries(JSON.parse(raw))) : new Map();
+	} catch (e) {
+		return new Map();
+	}
+})();
+
+function _persistImageDims() {
+	try {
+		localStorage.setItem(_IMG_DIMS_CACHE_KEY, JSON.stringify(Object.fromEntries(_imageDimsCache)));
+	} catch (e) { /* quota or serialization issue — non-fatal */ }
+}
+
+function getImageDimensions(fileUuid, url) {
+	const cached = _imageDimsCache.get(fileUuid);
+	if (cached) return Promise.resolve(cached);
+
+	return new Promise((resolve) => {
+		const fallback = { width: 1024, height: 1024 };
+		const img = new Image();
+		let settled = false;
+		const finish = (dims, persist) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			if (persist) {
+				_imageDimsCache.set(fileUuid, dims);
+				_persistImageDims();
+			}
+			resolve(dims);
+		};
+		// Don't cache the fallback — a later load may succeed with real dimensions.
+		const timer = setTimeout(() => finish(fallback, false), 5000);
+		img.onload = () => finish({
+			width: img.naturalWidth || fallback.width,
+			height: img.naturalHeight || fallback.height
+		}, true);
+		img.onerror = () => finish(fallback, false);
+		img.src = url;
+	});
+}
+
 // ==== FETCH INTERCEPTION — inject test markers into tool_use/thinking near image results ====
 const _imageExtractorOriginalFetch = window.fetch;
 window.fetch = async (...args) => {
@@ -22,14 +72,18 @@ window.fetch = async (...args) => {
 		const data = await response.json();
 
 		if (data?.chat_messages) {
+			// Org ID for building preview URLs when msg.files is empty (new API shape).
+			let orgId = null;
+			try { orgId = getOrgId(); } catch (e) { /* fail soft — fall back to file URLs */ }
+
 			for (const msg of data.chat_messages) {
 				if (msg.sender === 'human') continue;
 				const content = msg.content;
-				if (!content || !msg.files) continue;
+				if (!content) continue;
 
-				// Build file lookup map
+				// Build file lookup map (may be empty on the new API shape)
 				const fileMap = new Map();
-				for (const f of msg.files) {
+				for (const f of msg.files || []) {
 					fileMap.set(f.file_uuid || f.uuid, f);
 				}
 
@@ -41,25 +95,35 @@ window.fetch = async (...args) => {
 					if (item.type !== 'tool_result') continue;
 					if (!item.content?.some(c => c.type === 'image')) continue;
 
-					// Collect all image items from this tool_result
-					const galleryImages = [];
-					for (const c of item.content) {
-						if (c.type !== 'image') continue;
+					// Collect all image items from this tool_result. Resolve URL from the
+					// file entry if present, otherwise build it ourselves, then measure
+					// dimensions in parallel.
+					const galleryImages = (await Promise.all(item.content.map(async (c) => {
+						if (c.type !== 'image') return null;
 						const file = fileMap.get(c.file_uuid);
-						if (!file) continue;
 
-						const imageUrl = file.preview_url || file.thumbnail_url;
-						if (!imageUrl) continue;
+						let imageUrl = file?.preview_url || file?.thumbnail_url;
+						if (!imageUrl && orgId) {
+							imageUrl = `https://claude.ai/api/${orgId}/files/${c.file_uuid}/preview`;
+						}
+						if (!imageUrl) return null; // no file entry and no orgId → cannot build
 
-						const asset = file.preview_asset || file.thumbnail_asset || {};
+						// Prefer dimensions from the file asset; otherwise measure the preview.
+						const asset = file?.preview_asset || file?.thumbnail_asset || {};
+						let realW = asset.image_width;
+						let realH = asset.image_height;
+						if (!realW || !realH) {
+							const dims = await getImageDimensions(c.file_uuid, imageUrl);
+							realW = dims.width;
+							realH = dims.height;
+						}
+
 						// Scale dimensions up so the gallery renders at full width
-						const realW = asset.image_width || 1024;
-						const realH = asset.image_height || 1024;
 						const scale = 3840 / realW;
 						const scaledW = Math.round(realW * scale);
 						const scaledH = Math.round(realH * scale);
 
-						galleryImages.push({
+						return {
 							id: c.file_uuid,
 							url: imageUrl,
 							thumbnail_url: imageUrl,
@@ -70,8 +134,8 @@ window.fetch = async (...args) => {
 							height: scaledH,
 							thumbnail_width: scaledW,
 							thumbnail_height: scaledH
-						});
-					}
+						};
+					}))).filter(Boolean);
 
 					if (galleryImages.length === 0) continue;
 
@@ -140,7 +204,7 @@ window.fetch = async (...args) => {
 				}
 
 				if (insertions.length > 0) {
-					//console.log('[QOL-ImageExtractor] Final content array for message', msg.uuid, JSON.parse(JSON.stringify(content)));
+					console.log('[QOL-ImageExtractor] Final content array for message', msg.uuid, JSON.parse(JSON.stringify(content)));
 				}
 			}
 		}
