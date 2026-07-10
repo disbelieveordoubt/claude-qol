@@ -1,1 +1,2 @@
-Fix image display for new API shape
+Fix buttons for the new UI
+Change TTS to go through the native system
