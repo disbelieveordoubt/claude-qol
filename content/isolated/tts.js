@@ -297,8 +297,8 @@
 			}
 		});
 
-		// Add additional classes for sizing and identification
-		button.classList.add('h-8', 'w-8', 'tts-speak-button');
+		// Add identification class
+		button.classList.add('tts-speak-button');
 
 		createClaudeTooltip(button, 'Read aloud');
 

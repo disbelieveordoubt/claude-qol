@@ -313,7 +313,7 @@
 			createFn: createPresetButton,
 			tooltip: 'Preferences preset: None',
 			forceDisplayOnMobile: false,
-			pages: ['chat', 'home', 'coworkChat', 'coworkHome'],
+			pages: ['chat', 'home'],
 			onInjected: () => updatePresetButtonAppearance(),
 		});
 	}

@@ -8,7 +8,7 @@ document.documentElement.setAttribute('data-claude-qol-installed', 'true');
 const CLAUDE_CLASSES = {
 	// Buttons
 	ICON_BTN: 'inline-flex items-center justify-center relative shrink-0 ring-offset-2 ring-offset-bg-300 ring-accent-main-100 focus-visible:outline-none focus-visible:ring-1 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none text-text-200 border-transparent transition-colors font-styrene active:bg-bg-400 h-9 w-9 rounded-md active:scale-95',
-	ICON_BTN_MSG: 'inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border-transparent transition font-base duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] h-8 w-8 rounded-md active:scale-95 group/btn',
+	ICON_BTN_MSG: 'inline-flex items-center justify-center relative shrink-0 can-focus select-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:drop-shadow-none border-transparent transition font-base duration-300 ease-[cubic-bezier(0.165,0.85,0.45,1)] h-6 w-6 rounded !text-muted active:scale-95 group/btn',
 	BTN_PRIMARY: 'inline-flex items-center justify-center px-4 py-2 font-base-bold bg-text-000 text-bg-000 rounded hover:bg-text-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-w-[5rem] h-9',
 	BTN_SECONDARY: 'inline-flex items-center justify-center px-4 py-2 hover:bg-bg-500/40 rounded transition-colors min-w-[5rem] h-9 text-text-000 font-base-bold border-0.5 border-border-200',
 
@@ -462,6 +462,14 @@ function createClaudeButton(content, variant = 'primary', onClick = null, conten
 		button.innerHTML = content;
 	} else {
 		button.textContent = content;
+	}
+
+	if (variant === 'icon-message') {
+		// Native message action buttons are 24x24 with 16px icons
+		button.querySelectorAll('svg').forEach(svg => {
+			svg.setAttribute('width', '16');
+			svg.setAttribute('height', '16');
+		});
 	}
 
 	if (onClick) button.onclick = onClick;
@@ -1221,13 +1229,13 @@ const pageLayouts = {
 	},
 	coworkChat: {
 		group: 'coworkChat',
-		match() { return window.location.pathname.startsWith('/local_sessions/'); },
+		// Match only cowork chat sessions: cloud (/cowork/cse_...) and desktop local
+		// (/cowork/local_...). Other /cowork/ paths (e.g. /cowork/project/...) must not match.
+		match() { return /^\/cowork\/(cse_|local_)/.test(window.location.pathname); },
 		getAnchor() {
-			const aside = document.querySelector('aside[aria-label="Session activity panel"]');
-			if (!aside) return null;
-			const inner = aside.firstElementChild;
-			if (!inner) return null;
-			return { parent: inner, referenceNode: inner.firstElementChild, mode: 'inline' };
+			const actionsSlot = document.querySelector('#dframe-header-actions-slot');
+			if (!actionsSlot) return null;
+			return { parent: actionsSlot.parentElement, referenceNode: actionsSlot, mode: 'inline' };
 		},
 	},
 	chatActions: {
@@ -1276,10 +1284,17 @@ const pageLayouts = {
 		match() {
 			const isHome = window.location.pathname === '/new' || window.location.pathname === '/';
 			if (!isHome) return false;
+			if (document.querySelector('#dframe-header-actions-slot')) return true;
 			const mainContent = document.getElementById('main-content');
 			return !!mainContent?.querySelector('[class*="look-around"]');
 		},
 		getAnchor() {
+			// New dframe layout: native buttons live in the header actions slot
+			const actionsSlot = document.querySelector('#dframe-header-actions-slot');
+			if (actionsSlot) {
+				return { parent: actionsSlot.parentElement, referenceNode: actionsSlot, mode: 'inline' };
+			}
+			// Legacy layout: ghost button inside #main-content
 			const mainContent = document.getElementById('main-content');
 			const ghost = mainContent?.querySelector('[class*="look-around"]');
 			if (!ghost) return null;

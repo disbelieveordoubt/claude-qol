@@ -28,7 +28,6 @@
 		btn.type = 'button';
 		btn.setAttribute('data-state', 'closed');
 		btn.setAttribute('aria-label', 'Advanced Edit');
-		btn.classList.add('h-8', 'w-8');
 		createClaudeTooltip(btn, 'Advanced Edit', true);
 		return btn;
 	}

@@ -7,9 +7,9 @@
 	// ======== STATE ========
 	let isFirstSyncOnRecents = true;
 	let syncCancelled = false;
-	// Poll for navigation away from /recents
+	// Poll for navigation away from the chat list page (/chats, formerly /recents)
 	setInterval(() => {
-		if (!window.location.pathname.includes('/recents')) {
+		if (!window.location.pathname.includes('/recents') && !window.location.pathname.includes('/chats')) {
 			isFirstSyncOnRecents = true; // Reset when not on /recents
 			sessionStorage.setItem('text_search_enabled', 'false'); // Disable text search when leaving
 		}
@@ -623,8 +623,8 @@
 
 	// ======== GLOBAL SEARCH TOGGLE ========
 	function addGlobalSearchToggle() {
-		// Only on recents page
-		if (!window.location.pathname.includes('/recents')) {
+		// Only on the chat list page (/chats, formerly /recents)
+		if (!window.location.pathname.includes('/recents') && !window.location.pathname.includes('/chats')) {
 			return;
 		}
 

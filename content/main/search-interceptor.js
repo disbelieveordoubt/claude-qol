@@ -96,7 +96,7 @@
 	// longer matches anything. We identify result links structurally instead (inside the results
 	// <table>), which excludes the always-present sidebar /chat/ links.
 	document.addEventListener('click', (event) => {
-		if (!window.location.pathname.includes('/recents')) return;
+		if (!window.location.pathname.includes('/recents') && !window.location.pathname.includes('/chats')) return;
 		if (sessionStorage.getItem('text_search_enabled') !== 'true') return;
 		if (!lastSearchQuery) return;
 
