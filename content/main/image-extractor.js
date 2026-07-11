@@ -53,6 +53,198 @@ function getImageDimensions(fileUuid, url) {
 	});
 }
 
+// ==== LIVE SSE INJECTION ====
+// During a streaming completion, MCP/ComfyUI image tools stream back as a bare
+// tool_result content block (content: [{type:"image", file_uuid}, ...]) which the
+// renderer draws as a tiny "Tool result" thumbnail. The renderer only draws a full
+// gallery when a tool_result's name === "image_search", so — mirroring the load-time
+// injector below — we splice a synthetic image_search tool_use + tool_result (carrying
+// an image_gallery) into the stream right after each such block. Content blocks are
+// keyed by a sequential integer index, so every later event's index is bumped by +2
+// per injection. This is purely a live/visual upgrade; on reload the load-time path
+// re-injects from the conversation JSON (with real measured dimensions).
+function createImageInjectingStream(sourceBody, orgId) {
+	const reader = sourceBody.getReader();
+	const decoder = new TextDecoder();
+	const encoder = new TextEncoder();
+
+	let buffer = '';
+	let indexOffset = 0;
+	const toolUseInputBuf = new Map();   // nativeIndex -> accumulated input_json_delta string
+	const toolUseParsed = new Map();     // nativeIndex -> parsed tool_use input object
+	const pendingInjections = new Map(); // tool_result nativeIndex -> [image items]
+
+	const emit = (controller, text) => controller.enqueue(encoder.encode(text + '\n\n'));
+
+	// Bump the single top-level "index":N in a passed-through event by the running offset.
+	const applyOffset = (rawEvent) => {
+		if (indexOffset === 0) return rawEvent;
+		return rawEvent.replace(/"index":(\d+)/, (m, n) => `"index":${parseInt(n, 10) + indexOffset}`);
+	};
+
+	const buildInjectedEvents = async (toolResultNativeIndex, images, prompt) => {
+		const outIndex = toolResultNativeIndex + indexOffset; // output index of the native tool_result we just emitted
+		const toolUseIndex = outIndex + 1;
+		const toolResultIndex = outIndex + 2;
+		const toolUseId = 'toolu_gallery_' + crypto.randomUUID().replace(/-/g, '').substring(0, 20);
+		const ts = new Date().toISOString();
+
+		// Measure each preview (same helper + shared localStorage cache the load-time path
+		// uses) so the gallery renders at the correct aspect immediately — no flash — and
+		// so the later reload is instant. Width is scaled to 3840 so it renders full-width,
+		// matching the load-time injector.
+		const galleryImages = await Promise.all(images.map(async (c) => {
+			const imageUrl = `https://claude.ai/api/${orgId}/files/${c.file_uuid}/preview`;
+			const dims = await getImageDimensions(c.file_uuid, imageUrl);
+			const scale = 3840 / dims.width;
+			const scaledW = Math.round(dims.width * scale);
+			const scaledH = Math.round(dims.height * scale);
+			return {
+				id: c.file_uuid,
+				url: imageUrl,
+				thumbnail_url: imageUrl,
+				title: prompt ? 'Generated: ' + prompt.substring(0, 100) : '',
+				source: '',
+				page_url: imageUrl,
+				width: scaledW,
+				height: scaledH,
+				thumbnail_width: scaledW,
+				thumbnail_height: scaledH
+			};
+		}));
+
+		const toolUseBlock = {
+			type: 'content_block_start',
+			index: toolUseIndex,
+			content_block: {
+				type: 'tool_use',
+				id: toolUseId,
+				name: 'image_search',
+				input: {},
+				message: 'Generated image' + (galleryImages.length > 1 ? 's' : ''),
+				integration_name: null,
+				integration_icon_url: null,
+				icon_name: null,
+				context: null,
+				display_content: null,
+				approval_options: null,
+				approval_key: null,
+				approval_key_legacy: null,
+				is_mcp_app: null,
+				mcp_server_url: null,
+				start_timestamp: ts,
+				stop_timestamp: null,
+				flags: null
+			}
+		};
+
+		const toolResultBlock = {
+			type: 'content_block_start',
+			index: toolResultIndex,
+			content_block: {
+				type: 'tool_result',
+				tool_use_id: toolUseId,
+				name: 'image_search',
+				content: [
+					{ text: prompt ? 'Generated image for: ' + prompt : 'Generated image', type: 'text' },
+					{ type: 'image_gallery', images: galleryImages }
+				],
+				is_error: false,
+				structured_content: null,
+				meta: null,
+				message: null,
+				integration_name: null,
+				mcp_server_url: null,
+				integration_icon_url: null,
+				icon_name: null,
+				display_content: null,
+				start_timestamp: ts,
+				stop_timestamp: ts,
+				flags: null
+			}
+		};
+
+		return [
+			`event: content_block_start\ndata: ${JSON.stringify(toolUseBlock)}`,
+			`event: content_block_stop\ndata: ${JSON.stringify({ type: 'content_block_stop', index: toolUseIndex, stop_timestamp: ts })}`,
+			`event: content_block_start\ndata: ${JSON.stringify(toolResultBlock)}`,
+			`event: content_block_stop\ndata: ${JSON.stringify({ type: 'content_block_stop', index: toolResultIndex, stop_timestamp: ts })}`
+		];
+	};
+
+	const handleEvent = async (controller, rawEvent) => {
+		if (!rawEvent.trim()) return;
+
+		let parsed = null;
+		const dataMatch = rawEvent.match(/(?:^|\n)data: (.*)$/);
+		if (dataMatch) { try { parsed = JSON.parse(dataMatch[1]); } catch (e) { /* non-JSON event */ } }
+
+		// Forward the native event first, with any accumulated index offset applied.
+		emit(controller, applyOffset(rawEvent));
+
+		if (!parsed || typeof parsed.index !== 'number') return;
+
+		// Accumulate the preceding tool_use's streamed input so we can recover its prompt.
+		if (parsed.type === 'content_block_start' && parsed.content_block?.type === 'tool_use') {
+			toolUseInputBuf.set(parsed.index, '');
+		} else if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'input_json_delta' && toolUseInputBuf.has(parsed.index)) {
+			toolUseInputBuf.set(parsed.index, toolUseInputBuf.get(parsed.index) + (parsed.delta.partial_json || ''));
+		} else if (parsed.type === 'content_block_stop' && toolUseInputBuf.has(parsed.index)) {
+			try { toolUseParsed.set(parsed.index, JSON.parse(toolUseInputBuf.get(parsed.index) || '{}')); } catch (e) {}
+			toolUseInputBuf.delete(parsed.index);
+		}
+
+		// Detect a bare-image tool_result (ComfyUI/MCP). Native image_search results carry
+		// an image_gallery instead of bare image items, so they never match.
+		if (parsed.type === 'content_block_start' && parsed.content_block?.type === 'tool_result') {
+			const images = (parsed.content_block.content || []).filter((c) => c.type === 'image' && c.file_uuid);
+			if (images.length > 0 && orgId) pendingInjections.set(parsed.index, images);
+		}
+
+		// The tool_result start is immediately followed by its stop; inject right after it.
+		if (parsed.type === 'content_block_stop' && pendingInjections.has(parsed.index)) {
+			const images = pendingInjections.get(parsed.index);
+			pendingInjections.delete(parsed.index);
+			const prompt = toolUseParsed.get(parsed.index - 1)?.prompt || '';
+			for (const ev of await buildInjectedEvents(parsed.index, images, prompt)) emit(controller, ev);
+			indexOffset += 2;
+		}
+	};
+
+	return new ReadableStream({
+		async pull(controller) {
+			while (true) {
+				let result;
+				try {
+					result = await reader.read();
+				} catch (e) {
+					controller.error(e);
+					return;
+				}
+				const { done, value } = result;
+				if (done) {
+					if (buffer.trim()) await handleEvent(controller, buffer);
+					controller.close();
+					return;
+				}
+				buffer += decoder.decode(value, { stream: true });
+				let emitted = false;
+				let boundary;
+				while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+					const rawEvent = buffer.slice(0, boundary);
+					buffer = buffer.slice(boundary + 2);
+					await handleEvent(controller, rawEvent);
+					emitted = true;
+				}
+				if (emitted) return; // yield back to consumer after producing output
+			}
+		},
+		cancel(reason) {
+			try { reader.cancel(reason); } catch (e) {}
+		}
+	});
+}
+
 // ==== FETCH INTERCEPTION — inject test markers into tool_use/thinking near image results ====
 const _imageExtractorOriginalFetch = window.fetch;
 window.fetch = async (...args) => {
@@ -62,6 +254,31 @@ window.fetch = async (...args) => {
 	if (input instanceof URL) url = input.href;
 	else if (typeof input === 'string') url = input;
 	else if (input instanceof Request) url = input.url;
+
+	// Live streaming: inject galleries into the completion SSE stream as tool results arrive.
+	if (url &&
+		(url.includes('/completion') || url.includes('/retry_completion')) &&
+		config?.method === 'POST') {
+
+		const response = await _imageExtractorOriginalFetch(...args);
+		if (!response.body) return response;
+
+		let orgId = null;
+		try { orgId = getOrgId(); } catch (e) { /* no org id → cannot build preview URLs */ }
+		if (!orgId) return response;
+
+		try {
+			const transformed = createImageInjectingStream(response.body, orgId);
+			return new Response(transformed, {
+				status: response.status,
+				statusText: response.statusText,
+				headers: response.headers
+			});
+		} catch (e) {
+			console.error('[QOL-ImageExtractor] Failed to wrap completion stream, passing through:', e);
+			return response;
+		}
+	}
 
 	if (url &&
 		url.includes('/chat_conversations/') &&
