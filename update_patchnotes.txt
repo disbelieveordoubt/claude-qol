@@ -1,2 +1,2 @@
-Fix buttons for the new UI
-Change TTS to go through the native system
+Added copying exports to clipboard
+Added mid-stream image injection to make it more responsive
