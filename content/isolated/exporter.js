@@ -1395,7 +1395,7 @@
 		const blob = exportContent instanceof Blob
 			? exportContent
 			: new Blob([exportContent], { type: 'text/plain' });
-		return { filename, blob, wasCached };
+		return { filename, blob, wasCached, content: exportContent };
 	}
 
 	async function handleBulkExport(formatSelectValue, exportOptions, modal, projectId = null, exportTree = false, afterDate = null) {
@@ -1597,16 +1597,26 @@
 			const exportContainer = document.createElement('div');
 			exportContainer.className = 'mb-4 flex gap-2';
 
+			// Format descriptors. `copyable` marks whether the format produces a plain
+			// string that can go to the clipboard (zip is binary/Blob, so it cannot).
+			const EXPORT_FORMATS = [
+				{ value: 'html_html', label: 'HTML (.html)', copyable: true },
+				{ value: 'zip_zip', label: 'Zip (.zip)', copyable: false },
+				{ value: 'md_md', label: 'Markdown (.md)', copyable: true },
+				{ value: 'jsonl_jsonl', label: 'JSONL (.jsonl)', copyable: true },
+				{ value: 'librechat_json', label: 'Librechat (.json)', copyable: true },
+				{ value: 'raw_json', label: 'Raw JSON (.json)', copyable: true }
+			];
+			const isCopyable = (v) => EXPORT_FORMATS.find(f => f.value === v)?.copyable ?? false;
+
+			// Fall back if the saved format is no longer offered (e.g. the removed txt option)
+			const selectedFormat = EXPORT_FORMATS.some(f => f.value === lastFormat) ? lastFormat : 'html_html';
+
 			// Format select
-			formatSelect = createClaudeSelect([
-				{ value: 'html_html', label: 'HTML (.html)' },
-				{ value: 'zip_zip', label: 'Zip (.zip)' },
-				{ value: 'txt_txt', label: 'Text (.txt)' },
-				{ value: 'md_md', label: 'Markdown (.md)' },
-				{ value: 'jsonl_jsonl', label: 'JSONL (.jsonl)' },
-				{ value: 'librechat_json', label: 'Librechat (.json)' },
-				{ value: 'raw_json', label: 'Raw JSON (.json)' }
-			], lastFormat);
+			formatSelect = createClaudeSelect(
+				EXPORT_FORMATS.map(f => ({ value: f.value, label: f.label })),
+				selectedFormat
+			);
 			formatSelect.style.flex = '1';
 			exportContainer.appendChild(formatSelect);
 
@@ -1616,6 +1626,21 @@
 			exportButton.style.minWidth = '80px';
 			exportContainer.appendChild(exportButton);
 
+			// Copy button - single conversation only (bulk/project always produces a zip)
+			let copyButton;
+			const syncCopyEnabled = () => {
+				if (!copyButton) return;
+				const ok = isCopyable(formatSelect.value);
+				copyButton.disabled = !ok;
+				copyButton.classList.toggle('opacity-50', !ok);
+				copyButton.classList.toggle('cursor-not-allowed', !ok);
+			};
+			if (isInConversation) {
+				copyButton = createClaudeButton('Copy', 'secondary');
+				copyButton.style.minWidth = '64px';
+				exportContainer.appendChild(copyButton);
+			}
+
 			content.appendChild(exportContainer);
 
 			// Tree option container
@@ -1623,7 +1648,7 @@
 			treeOption.id = 'treeOption';
 			treeOption.className = 'mb-4 hidden';
 
-			const initialTreeDefault = ['html', 'zip'].includes(lastFormat.split('_')[0]);
+			const initialTreeDefault = ['html', 'zip'].includes(selectedFormat.split('_')[0]);
 			const { container: toggleContainer, input: treeToggleInput } = createClaudeToggle('Export entire tree', initialTreeDefault);
 			toggleInput = treeToggleInput;
 			treeOption.appendChild(toggleContainer);
@@ -1663,10 +1688,11 @@
 			content.appendChild(dateOption);
 
 			// Show/hide options based on initial value
-			const initialFormat = lastFormat.split('_')[0];
+			const initialFormat = selectedFormat.split('_')[0];
 			treeOption.classList.toggle('hidden', !['librechat', 'raw', 'html', 'zip'].includes(initialFormat));
 			thinkingOption.classList.toggle('hidden', initialFormat !== 'md');
 			attachmentsOption.classList.toggle('hidden', initialFormat !== 'md');
+			syncCopyEnabled();
 
 			// Update option visibility on select change
 			formatSelect.onchange = () => {
@@ -1675,6 +1701,7 @@
 				thinkingOption.classList.toggle('hidden', format !== 'md');
 				attachmentsOption.classList.toggle('hidden', format !== 'md');
 				toggleInput.checked = ['html', 'zip'].includes(format);
+				syncCopyEnabled();
 			};
 
 			// Export button handler
@@ -1720,6 +1747,46 @@
 					// Bulk export (all conversations or project-scoped)
 					const afterDate = dateInput?.value ? new Date(dateInput.value) : null;
 					await handleBulkExport(formatSelect.value, exportOptions, modal, projectId, toggleInput.checked, afterDate);
+				}
+			};
+
+			// Copy to clipboard handler (single conversation only)
+			if (copyButton) copyButton.onclick = async () => {
+				if (!isCopyable(formatSelect.value)) return;
+
+				const exportOptions = {
+					includeThinking: thinkingToggleInput?.checked ?? true,
+					includeAttachments: attachmentsToggleInput?.checked ?? false
+				};
+
+				const loadingModal = createLoadingModal('Copying...');
+				loadingModal.show();
+
+				try {
+					localStorage.setItem('lastExportFormat', formatSelect.value);
+
+					const parts = formatSelect.value.split("_");
+					const format = parts[0];
+					const extension = parts[1];
+					const exportTree = toggleInput.checked;
+					const orgId = getOrgId();
+
+					const { content } = await exportSingleConversation(
+						orgId, conversationId, format, extension, exportTree, exportOptions, loadingModal
+					);
+
+					if (content instanceof Blob) {
+						throw new Error('This format cannot be copied to the clipboard.');
+					}
+
+					await navigator.clipboard.writeText(content);
+
+					loadingModal.destroy();
+					modal.hide();
+				} catch (error) {
+					console.error('Copy failed:', error);
+					loadingModal.destroy();
+					showClaudeAlert('Copy Error', error.message || 'Failed to copy conversation');
 				}
 			};
 
