@@ -105,6 +105,17 @@ RULES:
 				fetchedMessages = result.messages;
 				totalTokens = estimateTokens(fetchedMessages);
 				percentInput.disabled = false;
+				
+				const updatedTimeStr = result.conversationData.updated_at;
+				if (updatedTimeStr) {
+					const updatedTime = new Date(updatedTimeStr).getTime();
+					const ageMinutes = Math.round((Date.now() - updatedTime) / 1000 / 60);
+					if (ageMinutes < 60) {
+						warningContainer.innerHTML = `<strong>Warning:</strong> This conversation was last updated ${ageMinutes} minute${ageMinutes === 1 ? '' : 's'} ago. Claude caches conversations for 60 minutes, so summarizing a warm-prefix conversation is ill-advised and may increase costs.`;
+						warningContainer.style.display = 'block';
+					}
+				}
+				
 				updateDisplay();
 			})
 			.catch(err => {
@@ -114,7 +125,15 @@ RULES:
 
 		// === Two-panel layout ===
 		const content = document.createElement('div');
-		content.className = 'flex gap-4';
+		content.className = 'flex flex-col gap-4';
+
+		const warningContainer = document.createElement('div');
+		warningContainer.style.display = 'none';
+		warningContainer.className = 'bg-danger-900/30 border border-danger-500/50 text-danger-100 p-3 rounded text-sm mb-2';
+		content.appendChild(warningContainer);
+
+		const columns = document.createElement('div');
+		columns.className = 'flex gap-4';
 
 		// --- LEFT PANEL ---
 		const leftPanel = document.createElement('div');
@@ -217,7 +236,7 @@ RULES:
 		leftPanel.appendChild(useSelectedModelToggle.container);
 
 
-		content.appendChild(leftPanel);
+		columns.appendChild(leftPanel);
 
 		// --- RIGHT PANEL (Summary Details) ---
 		const rightPanel = document.createElement('div');
@@ -273,7 +292,8 @@ RULES:
 		promptInput.id = 'summaryPrompt';
 		rightPanel.appendChild(promptInput);
 
-		content.appendChild(rightPanel);
+		columns.appendChild(rightPanel);
+		content.appendChild(columns);
 
 		// === Sync & Display Logic ===
 		let isSyncing = false;
