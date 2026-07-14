@@ -182,7 +182,8 @@ RULES:
 			max: 50,
 			step: 2,
 			leftLabel: '20%',
-			rightLabel: '50%'
+			rightLabel: '50%',
+			showTickLabels: false
 		});
 		
 		let isSyncing = false;
@@ -307,7 +308,7 @@ RULES:
 		content.appendChild(columns);
 
 		// === Sync & Display Logic ===
-		let isSyncing = false;
+		let isDisplaySyncing = false;
 
 		function getCurrentPercent() {
 			const val = parseInt(percentInput.value);
@@ -359,19 +360,19 @@ RULES:
 		}
 
 		function syncFromSlider() {
-			if (isSyncing) return;
-			isSyncing = true;
+			if (isDisplaySyncing) return;
+			isDisplaySyncing = true;
 			percentInput.value = rawTextSlider.input.value;
 			updateDisplay();
-			isSyncing = false;
+			isDisplaySyncing = false;
 		}
 
 		function syncFromPercent() {
-			if (isSyncing) return;
-			isSyncing = true;
+			if (isDisplaySyncing) return;
+			isDisplaySyncing = true;
 			rawTextSlider.setValue(getCurrentPercent());
 			updateDisplay();
-			isSyncing = false;
+			isDisplaySyncing = false;
 		}
 
 		rawTextSlider.input.addEventListener('change', syncFromSlider);

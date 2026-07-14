@@ -864,6 +864,7 @@ function createClaudeSlider(label, defaultValue = 100, options = {}) {
 		max = 100,
 		step = 25,
 		showLabels = true,
+		showTickLabels = true,
 		suffix = '%',
 		leftLabel = null,
 		rightLabel = null
@@ -942,10 +943,12 @@ function createClaudeSlider(label, defaultValue = 100, options = {}) {
 			tickWrapper.appendChild(tick);
 
 			// Label
-			const tickLabel = document.createElement('span');
-			tickLabel.className = 'text-xs text-text-400 select-none whitespace-nowrap';
-			tickLabel.textContent = `${value}${suffix}`;
-			tickWrapper.appendChild(tickLabel);
+			if (showTickLabels) {
+				const tickLabel = document.createElement('span');
+				tickLabel.className = 'text-xs text-text-400 select-none whitespace-nowrap';
+				tickLabel.textContent = `${value}${suffix}`;
+				tickWrapper.appendChild(tickLabel);
+			}
 
 			// Click on tick to set value
 			tickWrapper.addEventListener('click', () => {
