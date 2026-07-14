@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+### Added
 - Initialized `CHANGELOG.md` using the Keep a Changelog v2.0 format.
 - Created `structure.yaml` to document and track the project's layout and components.
 
@@ -16,3 +25,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented a global Error Toast notification system (`bottom-right`) to catch and display critical background errors (e.g. TTS failures, Export crashes) that were previously silently logged to the console.
 - Refactored hardcoded Javascript hex colors into `var(--qol-primary)` CSS custom properties, greatly improving compatibility with styling extensions like DarkReader.
 - Hardened the summarization architecture against Prompt Injection attacks by sealing systemic instructions in XML `<instructions>` tags, instructing the model to prioritize System Rules over user inputs, and aggressively sanitizing input slider boundaries to prevent API crashes.
+- Implemented a pre-processing string sanitization pipeline that automatically strips XML instruction tags from chatlogs and chunk summaries before transmission to definitively close all injection vectors.

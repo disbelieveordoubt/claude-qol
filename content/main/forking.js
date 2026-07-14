@@ -687,7 +687,8 @@ RULES:
 
 		// Add chatlog/summary attachments (conversation metadata - force inline)
 		for (const att of forkAttachments) {
-			await forkMessage.addFile(att.text, att.filename, true);
+			const sanitizedText = ClaudeConversation.sanitizeInjectionVectors(att.text);
+			await forkMessage.addFile(sanitizedText, att.filename, true);
 		}
 
 		// Collect and deduplicate files from messages (excludes ClaudeAttachments which are inline)
@@ -864,7 +865,8 @@ RULES:
 
 		// Add prior summary attachments (conversation metadata - force inline)
 		for (let i = 0; i < priorSummaryTexts.length; i++) {
-			await summaryMessage.addFile(priorSummaryTexts[i], `summary_chunk_${i + 1}.txt`, true);
+			const sanitizedText = ClaudeConversation.sanitizeInjectionVectors(priorSummaryTexts[i]);
+			await summaryMessage.addFile(sanitizedText, `summary_chunk_${i + 1}.txt`, true);
 		}
 
 		// Add existing attachments from messages
