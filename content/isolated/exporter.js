@@ -1314,6 +1314,7 @@
 			loadingModal.destroy();
 			if (error.message === 'USER_CANCELLED') return;
 			console.error('Import failed:', error);
+			if (window.showErrorToast) window.showErrorToast('Import failed: ' + (error.message || error));
 			showClaudeAlert('Import Error', error.message || 'Failed to import conversation');
 		}
 	}
@@ -1564,6 +1565,7 @@
 			modal.hide();
 		} catch (error) {
 			console.error('Bulk export failed:', error);
+			if (window.showErrorToast) window.showErrorToast('Bulk export failed: ' + (error.message || error));
 			loadingModal.destroy();
 			if (!bulkExportCancelled) {
 				showClaudeAlert('Export Error', error.message || 'Failed to bulk export conversations');
@@ -1740,6 +1742,7 @@
 						modal.hide();
 					} catch (error) {
 						console.error('Export failed:', error);
+						if (window.showErrorToast) window.showErrorToast('Export failed: ' + (error.message || error));
 						loadingModal.destroy();
 						showClaudeAlert('Export Error', error.message || 'Failed to export conversation');
 					}

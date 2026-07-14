@@ -15,3 +15,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated default settings in the forking UI based on best practices: changed the verbatim slider default from 20% to 30%, and enabled "Forward files from summarized section" by default.
 - Added a human-readable ASCII tree representation to `structure.yaml` for easier visualization of the codebase.
 - Replaced the simple verbatim slider with a hybrid component: the visual slider is now bounded to the 20-50% sweet spot with 2% increments, and paired with a synchronized numeric input to allow adjustments outside that band.
+- Implemented a global Error Toast notification system (`bottom-right`) to catch and display critical background errors (e.g. TTS failures, Export crashes) that were previously silently logged to the console.
+- Refactored hardcoded Javascript hex colors into `var(--qol-primary)` CSS custom properties, greatly improving compatibility with styling extensions like DarkReader.
