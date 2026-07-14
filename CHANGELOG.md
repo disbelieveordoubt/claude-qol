@@ -1,0 +1,15 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+### Added
+- Initialized `CHANGELOG.md` using the Keep a Changelog v2.0 format.
+- Created `structure.yaml` to document and track the project's layout and components.
+
+### Changed
+- Replaced the default summarization prompt in `content/main/forking.js` with a new, highly-structured prompt designed to optimize context transfer and fidelity for continuation in a new window.
+- Updated default settings in the forking UI based on best practices: changed the verbatim slider default from 20% to 30%, and enabled "Forward files from summarized section" by default.

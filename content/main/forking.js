@@ -2,9 +2,46 @@
 (function () {
 	'use strict';
 	const defaultSummaryPrompt =
-		`I've attached a chatlog from a previous conversation. Please create a complete, detailed summary of the conversation that covers all important points, questions, and responses. This summary will be used to continue the conversation in a new chat, so make sure it provides enough context to understand the full discussion. Be thorough, and think things through. Make it lengthy.
-If this is a technical discussion, include any relevant technical details, code snippets, or explanations that were part of the conversation, maintaining information concerning only the latest version of any code discussed.
-If this is a writing or creative discussion, include sections for characters, plot points, setting info, etcetera. Avoid overusing bulletpoints - prose is preferred.`;
+		`Summarize this conversation for seamless continuation in a new context window. A successor instance will read your summary and continue as if no break occurred. Optimize for minimum tokens, maximum fidelity.
+
+OUTPUT FORMAT:
+
+<summary>
+<meta>
+turns_summarized: [n]
+type: [technical | creative | analytical | personal | mixed]
+open_threads: [brief list of unresolved topics/questions]
+</meta>
+
+<context>
+[Prose. Who the user is, what they want, constraints and preferences they've stated, decisions finalized. Capture register/tone in one sentence. User statements and corrections take priority over assistant reasoning.]
+</context>
+
+<state type="technical">
+[ONLY if applicable. Latest code/config/architecture state. Prior iterations excluded — note only what was superseded if the distinction matters. Inline short snippets; for longer blocks, describe structure and include only the sections under active modification.]
+</state>
+
+<state type="creative">
+[ONLY if applicable. Characters, setting, plot, voice/style decisions, narrative constraints established.]
+</state>
+
+<compressed>
+[One line per significant omission: what was cut and whether it's recoverable from context or permanently lost. This section lets the successor know its own blind spots.]
+</compressed>
+
+<active_thread>
+[The live discussion at point of summarization. Where continuation picks up. Include enough that the next response doesn't repeat or contradict the last few exchanges.]
+</active_thread>
+</summary>
+
+RULES:
+- Decisions > deliberation. What was decided, not the debate.
+- User words > assistant words. Preserve user constraints, corrections, and preferences at higher fidelity.
+- Resolved errors are excluded. Unresolved errors get full context.
+- If the user corrected the assistant, note the correction only.
+- No editorializing. No quality evaluation. No "the conversation was productive."
+- Prose over bullets except inside <state> blocks.
+- If the conversation established a specific working relationship, persona, or mode of interaction, capture that in <context> — the successor needs to match it.`;
 
 	let pendingFork = {
 		model: null,
@@ -92,7 +129,7 @@ If this is a writing or creative discussion, include sections for characters, pl
 		// Slider section
 		const rawTextContainer = document.createElement('div');
 		rawTextContainer.className = 'mb-4 space-y-2 border border-border-300 rounded p-3';
-		const rawTextSlider = createClaudeSlider('Preserve X% of recent messages verbatim:', 20, {
+		const rawTextSlider = createClaudeSlider('Preserve X% of recent messages verbatim:', 30, {
 			step: 10,
 			leftLabel: 'Summarize all',
 			rightLabel: 'Summarize none'
@@ -107,7 +144,7 @@ If this is a writing or creative discussion, include sections for characters, pl
 		const includeFilesToggle = createClaudeToggle('Forward files', true);
 		includeFilesToggle.input.id = 'includeFiles';
 		includeFilesContainer.appendChild(includeFilesToggle.container);
-		const keepFilesFromSummarizedToggle = createClaudeToggle('Forward files from summarized section', false);
+		const keepFilesFromSummarizedToggle = createClaudeToggle('Forward files from summarized section', true);
 		keepFilesFromSummarizedToggle.container.classList.add('pl-4');
 		keepFilesFromSummarizedToggle.container.style.transition = 'opacity 0.2s';
 		keepFilesFromSummarizedToggle.input.id = 'keepFilesFromSummarized';
