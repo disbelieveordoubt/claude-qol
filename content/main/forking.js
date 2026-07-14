@@ -129,12 +129,58 @@ RULES:
 		// Slider section
 		const rawTextContainer = document.createElement('div');
 		rawTextContainer.className = 'mb-4 space-y-2 border border-border-300 rounded p-3';
-		const rawTextSlider = createClaudeSlider('Preserve X% of recent messages verbatim:', 30, {
-			step: 10,
-			leftLabel: 'Summarize all',
-			rightLabel: 'Summarize none'
+		
+		const headerRow = document.createElement('div');
+		headerRow.className = 'flex justify-between items-center mb-2';
+		const titleLabel = document.createElement('label');
+		titleLabel.className = CLAUDE_CLASSES.LABEL;
+		titleLabel.textContent = 'Preserve verbatim (%):';
+		titleLabel.style.margin = '0';
+		
+		const numInputContainer = document.createElement('div');
+		numInputContainer.className = 'flex items-center gap-1';
+		const numInput = document.createElement('input');
+		numInput.type = 'number';
+		numInput.min = '0';
+		numInput.max = '100';
+		numInput.value = '30';
+		numInput.id = 'rawTextPercentage';
+		numInput.className = CLAUDE_CLASSES.INPUT;
+		numInput.style.padding = '0.25rem 0.5rem';
+		numInput.style.width = '4rem';
+		numInput.style.textAlign = 'center';
+		numInputContainer.appendChild(numInput);
+		
+		headerRow.appendChild(titleLabel);
+		headerRow.appendChild(numInputContainer);
+		rawTextContainer.appendChild(headerRow);
+
+		const rawTextSlider = createClaudeSlider(null, 30, {
+			min: 20,
+			max: 50,
+			step: 2,
+			leftLabel: '20%',
+			rightLabel: '50%'
 		});
-		rawTextSlider.input.id = 'rawTextPercentage';
+		
+		let isSyncing = false;
+		numInput.addEventListener('input', (e) => {
+			if (isSyncing) return;
+			let val = parseInt(e.target.value, 10);
+			if (!isNaN(val)) {
+				isSyncing = true;
+				rawTextSlider.setValue(val);
+				isSyncing = false;
+			}
+		});
+		
+		rawTextSlider.input.addEventListener('input', (e) => {
+			if (isSyncing) return;
+			isSyncing = true;
+			numInput.value = e.target.value;
+			isSyncing = false;
+		});
+
 		rawTextContainer.appendChild(rawTextSlider.container);
 		leftPanel.appendChild(rawTextContainer);
 

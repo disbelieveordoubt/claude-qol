@@ -14,3 +14,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced the default summarization prompt in `content/main/forking.js` with a new, highly-structured prompt designed to optimize context transfer and fidelity for continuation in a new window.
 - Updated default settings in the forking UI based on best practices: changed the verbatim slider default from 20% to 30%, and enabled "Forward files from summarized section" by default.
 - Added a human-readable ASCII tree representation to `structure.yaml` for easier visualization of the codebase.
+- Replaced the simple verbatim slider with a hybrid component: the visual slider is now bounded to the 20-50% sweet spot with 2% increments, and paired with a synchronized numeric input to allow adjustments outside that band.
