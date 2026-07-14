@@ -1,5 +1,19 @@
 project: Claude-QoL
 description: An extension that adds QOL/Utility features to claude.ai (Search, Navigation, TTS, forking, exporting, etc.)
+ascii_tree: |
+  Claude-QoL/
+  ├── content/
+  │   ├── helpers/
+  │   ├── isolated/
+  │   └── main/
+  ├── html_template/
+  ├── lib/
+  ├── background.js
+  ├── manifest_chrome.json
+  ├── manifest_firefox.json
+  ├── manifest_electron.json
+  ├── build.bat
+  └── run-android.ps1
 directories:
   content:
     description: Content scripts that run in the context of the webpage
